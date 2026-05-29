@@ -1,0 +1,18 @@
+apiVersion: genkit.dev/v1alpha1
+kind: Prompt
+metadata:
+  name: greeting
+  namespace: default
+spec:
+  description: Greets a user by name using Claude Opus 4.6.
+  content: |
+    ---
+    model: anthropic/claude-opus-4-6
+    config:
+      temperature: 0.3
+      max_tokens: 256
+    input:
+      schema:
+        name: string
+    ---
+    You are a friendly assistant. Greet {{name}} in one short sentence.

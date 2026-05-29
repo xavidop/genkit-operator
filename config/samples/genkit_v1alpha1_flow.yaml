@@ -1,0 +1,23 @@
+apiVersion: genkit.dev/v1alpha1
+kind: Flow
+metadata:
+  name: greeter
+  namespace: default
+spec:
+  image: genkit-runner:dev
+  replicas: 1
+  port: 8080
+  modelRef:
+    name: claude-opus-47
+  prompts:
+    - name: greeting
+  tools:
+    - name: weather-lookup
+  serviceType: ClusterIP
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

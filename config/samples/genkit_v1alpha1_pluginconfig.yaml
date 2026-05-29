@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: anthropic-credentials
+  namespace: default
+type: Opaque
+stringData:
+  ANTHROPIC_API_KEY: replace-me
+---
+apiVersion: genkit.dev/v1alpha1
+kind: PluginConfig
+metadata:
+  name: anthropic
+  namespace: default
+spec:
+  type: anthropic
+  credentialsRef:
+    name: anthropic-credentials
+  # credentialKeys declares the Secret keys the runner must read. When
+  # omitted, the runtime uses the per-plugin defaults documented in
+  # docs/runtime-contract.md. Examples per provider:
+  #   anthropic: ["ANTHROPIC_API_KEY"]
+  #   openai:    ["OPENAI_API_KEY"]
+  #   googleai:  ["GEMINI_API_KEY"]    # or GOOGLE_API_KEY
+  #   vertexai:  ["GOOGLE_APPLICATION_CREDENTIALS"]
+  #   ollama:    []                    # no credentials
+  credentialKeys:
+    - ANTHROPIC_API_KEY

@@ -1,0 +1,28 @@
+apiVersion: genkit.dev/v1alpha1
+kind: FlowSet
+metadata:
+  name: greeting-suite
+  namespace: default
+spec:
+  # Pod-level configuration shared by every flow in this set.
+  image: genkit-runner:dev
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+  port: 8080
+  serviceType: ClusterIP
+
+  # Each entry becomes one HTTP route at POST /<name> served by the same
+  # Pod. The first prompt in each flow's prompts list is the entrypoint
+  # invoked by that route; the rest are helper prompts loaded into the
+  # flow's per-flow genkit registry.
+  flows:
+    - name: greeter-en
+      modelRef:
+        name: claude-opus-47
+      prompts:
+        - name: greeting
+    - name: greeter-es
+      modelRef:
+        name: claude-opus-47
+      prompts:
+        - name: greeting

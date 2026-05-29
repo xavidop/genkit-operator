@@ -1,0 +1,23 @@
+apiVersion: genkit.dev/v1alpha1
+kind: Model
+metadata:
+  name: claude-opus-47
+  namespace: default
+spec:
+  provider: anthropic
+  model: claude-opus-4-6
+  pluginConfigRef:
+    name: anthropic
+  info:
+    label: Anthropic - Claude Opus 4.6
+    stage: featured
+    supports:
+      multiturn: true
+      media: true
+      tools: true
+      systemRole: true
+  defaultConfig:
+    temperature: 0.3
+    top_p: 0.9
+    max_tokens: 1024
+    topP: 0.9

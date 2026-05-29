@@ -1,0 +1,11 @@
+## Append samples of your project ##
+resources:
+- genkit_v1alpha1_pluginconfig.yaml
+- genkit_v1alpha1_prompt.yaml
+- genkit_v1alpha1_tool.yaml
+- genkit_v1alpha1_dataset.yaml
+- genkit_v1alpha1_model.yaml
+- genkit_v1alpha1_flow.yaml
+- genkit_v1alpha1_flowset.yaml
+- genkit_v1alpha1_eval.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

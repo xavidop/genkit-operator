@@ -1,0 +1,15 @@
+apiVersion: genkit.dev/v1alpha1
+kind: Dataset
+metadata:
+  name: greeting-eval-set
+  namespace: default
+spec:
+  format: json
+  source:
+    inline:
+      - input: { name: "Ada" }
+        reference: "Hello Ada!"
+      - input: { name: "Linus" }
+        reference: "Hi Linus!"
+      - input: { name: "Grace" }
+        reference: "Greetings Grace!"

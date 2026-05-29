@@ -1,0 +1,23 @@
+# Build the runner binary — a reference Genkit runtime that satisfies the
+# operator's runtime contract (see docs/runtime-contract.md).
+FROM golang:1.25 AS builder
+ARG TARGETOS
+ARG TARGETARCH
+
+WORKDIR /workspace
+COPY go.mod go.mod
+COPY go.sum go.sum
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} \
+    go build -a -o runner ./cmd/runner
+
+FROM gcr.io/distroless/static:nonroot
+WORKDIR /
+COPY --from=builder /workspace/runner /runner
+USER 65532:65532
+
+EXPOSE 8080
+ENTRYPOINT ["/runner"]

@@ -1,0 +1,26 @@
+apiVersion: genkit.dev/v1alpha1
+kind: Tool
+metadata:
+  name: weather-lookup
+  namespace: default
+spec:
+  definition:
+    name: weather-lookup
+    description: Look up the current weather for a city.
+    inputSchema:
+      type: object
+      properties:
+        city:
+          type: string
+      required: [city]
+    outputSchema:
+      type: object
+      properties:
+        tempC:
+          type: number
+        summary:
+          type: string
+  implementation:
+    http:
+      url: https://example.com/api/weather
+      method: POST

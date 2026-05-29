@@ -1,0 +1,20 @@
+apiVersion: genkit.dev/v1alpha1
+kind: Eval
+metadata:
+  name: greeter-nightly
+  namespace: default
+spec:
+  flowRef:
+    name: greeter
+  datasetRef:
+    name: greeting-eval-set
+  metrics:
+    - faithfulness
+    - correctness
+  schedule: "0 2 * * *"
+  concurrency: 2
+  runnerImage: genkit-runner:dev
+  outputSink:
+    configMap:
+      name: greeter-nightly-results
+      key: result.json

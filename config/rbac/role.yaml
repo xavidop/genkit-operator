@@ -1,0 +1,92 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - secrets
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - cronjobs
+  - jobs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - genkit.dev
+  resources:
+  - datasets
+  - evals
+  - flows
+  - flowsets
+  - models
+  - pluginconfigs
+  - prompts
+  - tools
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - genkit.dev
+  resources:
+  - datasets/finalizers
+  - evals/finalizers
+  - flows/finalizers
+  - flowsets/finalizers
+  - models/finalizers
+  - pluginconfigs/finalizers
+  - prompts/finalizers
+  - tools/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - genkit.dev
+  resources:
+  - datasets/status
+  - evals/status
+  - flows/status
+  - flowsets/status
+  - models/status
+  - pluginconfigs/status
+  - prompts/status
+  - tools/status
+  verbs:
+  - get
+  - patch
+  - update
