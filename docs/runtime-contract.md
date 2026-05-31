@@ -156,8 +156,8 @@ from the `Secret` named by `PluginConfig.spec.credentialsRef`. **Multi-flow**
 (FlowSet) Pods receive credentials as files under
 `/genkit/flows/<flow>/credentials/`; the runtime reads them from disk
 instead of the environment. The runner ships with built-in support for
-`anthropic`, `openai`, `googleai`, `vertexai`, and `ollama`. Per-plugin
-defaults (used when `PluginConfig.spec.credentialKeys` is empty):
+`anthropic`, `openai`, `googleai`, `vertexai`, `ollama`, and `bedrock`.
+Per-plugin defaults (used when `PluginConfig.spec.credentialKeys` is empty):
 
 | Plugin    | Default key(s)                                  | Notes                                              |
 | --------- | ----------------------------------------------- | -------------------------------------------------- |
@@ -166,6 +166,7 @@ defaults (used when `PluginConfig.spec.credentialKeys` is empty):
 | googleai  | `GEMINI_API_KEY`, `GOOGLE_API_KEY` (first match)|                                                    |
 | vertexai  | `GOOGLE_APPLICATION_CREDENTIALS`                | runner points the env var at the mounted file     |
 | ollama    | _(none)_                                        | requires `plugin.extraConfig.serverAddress`        |
+| bedrock   | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` | uses AWS SDK default credential chain; `plugin.region` or `plugin.extraConfig.region` selects the region |
 
 Additional environment variables can be appended via `Flow.spec.env`
 (single-flow) or `FlowSet.spec.env` (multi-flow).

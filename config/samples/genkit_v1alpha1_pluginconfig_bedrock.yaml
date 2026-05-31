@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bedrock-credentials
+  namespace: default
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: replace-me
+  AWS_SECRET_ACCESS_KEY: replace-me
+  # AWS_SESSION_TOKEN is optional; set it only when using temporary
+  # credentials (e.g. from STS / AssumeRole).
+  # AWS_SESSION_TOKEN: replace-me
+---
+apiVersion: genkit.dev/v1alpha1
+kind: PluginConfig
+metadata:
+  name: bedrock
+  namespace: default
+spec:
+  type: bedrock
+  # Region can also be set via plugin.extraConfig.region; this top-level
+  # field is the convenient shortcut.
+  region: us-east-1
+  credentialsRef:
+    name: bedrock-credentials
+  credentialKeys:
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+    # - AWS_SESSION_TOKEN
+---
+apiVersion: genkit.dev/v1alpha1
+kind: Model
+metadata:
+  name: bedrock-claude-haiku
+  namespace: default
+spec:
+  provider: bedrock
+  model: anthropic.claude-3-haiku-20240307-v1:0
+  pluginConfigRef:
+    name: bedrock
+  info:
+    label: AWS Bedrock - Claude 3 Haiku
+    stage: featured
+    supports:
+      multiturn: true
+      media: true
+      tools: true
+      systemRole: true
+  defaultConfig:
+    temperature: 0.3
+    maxOutputTokens: 1024
+    topP: 0.9

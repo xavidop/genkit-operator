@@ -23,6 +23,7 @@ import (
 	"github.com/firebase/genkit/go/plugins/compat_oai/openai"
 	"github.com/firebase/genkit/go/plugins/googlegenai"
 	"github.com/firebase/genkit/go/plugins/ollama"
+	bedrock "github.com/xavidop/genkit-aws-bedrock-go"
 )
 
 // pluginBuilder constructs a genkit-go api.Plugin from the operator's
@@ -43,6 +44,7 @@ var pluginRegistry = map[string]pluginBuilder{
 	"googleai":  buildGoogleAI,
 	"vertexai":  buildVertexAI,
 	"ollama":    buildOllama,
+	"bedrock":   buildBedrock,
 }
 
 // defaultCredentialKeys is the conventional Secret-key fallback per
@@ -53,6 +55,7 @@ var defaultCredentialKeys = map[string][]string{
 	"googleai":  {"GEMINI_API_KEY", "GOOGLE_API_KEY"},
 	"vertexai":  {"GOOGLE_APPLICATION_CREDENTIALS"},
 	"ollama":    nil,
+	"bedrock":   {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"},
 }
 
 func buildPlugin(cfg *runtimeConfig, credentialsDir string) (api.Plugin, error) {
@@ -191,4 +194,33 @@ func buildOllama(cfg *runtimeConfig, credentialsDir string, keys []string) (api.
 		return nil, fmt.Errorf("ollama: plugin.extraConfig.serverAddress is required")
 	}
 	return o, nil
+}
+
+// bedrockExtraConfig is the optional shape of plugin.extraConfig for the
+// bedrock plugin. Region in extraConfig takes precedence over the
+// runtimeConfig.Plugin.Region shortcut.
+type bedrockExtraConfig struct {
+	Region string `json:"region,omitempty"`
+}
+
+func buildBedrock(cfg *runtimeConfig, credentialsDir string, keys []string) (api.Plugin, error) {
+	region := cfg.Plugin.Region
+	if len(cfg.Plugin.ExtraConfig) > 0 {
+		var x bedrockExtraConfig
+		if err := json.Unmarshal(cfg.Plugin.ExtraConfig, &x); err == nil && x.Region != "" {
+			region = x.Region
+		}
+	}
+	// AWS SDK uses standard env vars + the default credential chain. When
+	// credentials are mounted as files (FlowSet layout) load them into the
+	// process environment so the SDK picks them up. AWS_SESSION_TOKEN is
+	// optional (only used for STS / temporary credentials).
+	if credentialsDir != "" {
+		for _, k := range keys {
+			if b, err := os.ReadFile(filepath.Join(credentialsDir, k)); err == nil {
+				_ = os.Setenv(k, strings.TrimSpace(string(b)))
+			}
+		}
+	}
+	return &bedrock.Bedrock{Region: region}, nil
 }
