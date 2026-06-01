@@ -28,12 +28,12 @@ following providers:
 
 | Type        | Backed by                                       | Page                                                  |
 | ----------- | ----------------------------------------------- | ----------------------------------------------------- |
-| `anthropic` | `genkit-go/plugins/anthropic`                   | [Anthropic](/plugins/anthropic/)      |
-| `openai`    | `genkit-go/plugins/compat_oai/openai`           | [OpenAI](/plugins/openai/)            |
-| `googleai`  | `genkit-go/plugins/googlegenai` (`GoogleAI`)    | [Google AI](/plugins/googleai/)       |
-| `vertexai`  | `genkit-go/plugins/googlegenai` (`VertexAI`)    | [Vertex AI](/plugins/vertexai/)       |
-| `ollama`    | `genkit-go/plugins/ollama`                      | [Ollama](/plugins/ollama/)            |
-| `bedrock`   | `github.com/xavidop/genkit-aws-bedrock-go`      | [AWS Bedrock](/plugins/bedrock/)      |
+| `anthropic` | `genkit-go/plugins/anthropic`                   | [Anthropic](/genkit-operator/plugins/anthropic/)      |
+| `openai`    | `genkit-go/plugins/compat_oai/openai`           | [OpenAI](/genkit-operator/plugins/openai/)            |
+| `googleai`  | `genkit-go/plugins/googlegenai` (`GoogleAI`)    | [Google AI](/genkit-operator/plugins/googleai/)       |
+| `vertexai`  | `genkit-go/plugins/googlegenai` (`VertexAI`)    | [Vertex AI](/genkit-operator/plugins/vertexai/)       |
+| `ollama`    | `genkit-go/plugins/ollama`                      | [Ollama](/genkit-operator/plugins/ollama/)            |
+| `bedrock`   | `github.com/xavidop/genkit-aws-bedrock-go`      | [AWS Bedrock](/genkit-operator/plugins/bedrock/)      |
 
 ## Adding a new provider
 
@@ -57,7 +57,7 @@ func buildMyProv(cfg *runtimeConfig, credentialsDir string, keys []string) (api.
 ```
 
 If you'd rather not rebuild the runner, [build your own
-runner](/guides/custom-runner/) image with whatever
+runner](/genkit-operator/guides/custom-runner/) image with whatever
 provider stack you want.
 
 ## Free-form `extraConfig`

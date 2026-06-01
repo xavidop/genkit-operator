@@ -36,7 +36,7 @@ You hand the API server a set of CRs:
 - `Flow` (single endpoint) **or** `FlowSet` (many endpoints in one Pod)
 
 The controller resolves references, renders the
-[runtime contract](/runtime-contract/) into
+[runtime contract](/genkit-operator/runtime-contract/) into
 `ConfigMap`s, applies a `Deployment` and `Service`, and writes status
 back.
 

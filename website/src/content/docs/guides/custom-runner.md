@@ -25,7 +25,7 @@ The reference Go runner under
 [`cmd/runner`](https://github.com/xavidop/genkit-operator/tree/main/cmd/runner)
 does exactly this in ~400 lines and supports every plugin the
 operator ships with. Read the full
-[runtime contract](/runtime-contract/) before
+[runtime contract](/genkit-operator/runtime-contract/) before
 implementing your own.
 
 ## What is mounted, exactly

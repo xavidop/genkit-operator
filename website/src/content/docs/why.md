@@ -58,7 +58,7 @@ restart pods manually after editing a prompt.
   share one runner Pod, with isolated per-flow credentials mounted as
   files — useful for cost-effective fan-out.
 - **Pluggable runtime.** The runner image and the on-disk format are a
-  documented [contract](/runtime-contract/). You can
+  documented [contract](/genkit-operator/runtime-contract/). You can
   build your own runner — in Go, Node, Python, whatever — and the
   operator doesn't care.
 - **No CRD lock-in.** Each `PluginConfig.extraConfig` is a free-form

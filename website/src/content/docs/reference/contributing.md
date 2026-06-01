@@ -11,7 +11,7 @@ Kubernetes operator before, you'll feel at home.
 
 This repo uses [Conventional
 Commits](https://www.conventionalcommits.org/). Your messages drive the
-next version (see the [release process](/reference/release/)).
+next version (see the [release process](/genkit-operator/reference/release/)).
 
 Examples:
 

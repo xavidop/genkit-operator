@@ -93,8 +93,8 @@ the `Flow` Deployment automatically.
 
 ## Next steps
 
-- Read the [runtime contract](/runtime-contract/) to
+- Read the [runtime contract](/genkit-operator/runtime-contract/) to
   learn how a runner consumes `/genkit/*`.
-- Use [`FlowSet`](/guides/flowset/) to deploy several
+- Use [`FlowSet`](/genkit-operator/guides/flowset/) to deploy several
   related flows in one Pod.
-- Add another provider — try [AWS Bedrock](/plugins/bedrock/).
+- Add another provider — try [AWS Bedrock](/genkit-operator/plugins/bedrock/).
