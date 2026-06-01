@@ -1,3 +1,9 @@
+## [0.2.3](https://github.com/xavidop/genkit-operator/compare/v0.2.2...v0.2.3) (2026-06-01)
+
+### Bug Fixes
+
+* lint issues ([25633de](https://github.com/xavidop/genkit-operator/commit/25633deaf2549bddcb181109018815fea46e6a3d))
+
 ## [0.2.2](https://github.com/xavidop/genkit-operator/compare/v0.2.1...v0.2.2) (2026-06-01)
 
 ### Bug Fixes
