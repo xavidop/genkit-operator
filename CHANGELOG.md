@@ -1,3 +1,9 @@
+## [0.2.2](https://github.com/xavidop/genkit-operator/compare/v0.2.1...v0.2.2) (2026-06-01)
+
+### Bug Fixes
+
+* support for Azure ([50e68bf](https://github.com/xavidop/genkit-operator/commit/50e68bfce6667f17bed2c8ea054e84f49b44283f))
+
 ## [0.2.1](https://github.com/xavidop/genkit-operator/compare/v0.2.0...v0.2.1) (2026-06-01)
 
 ### Bug Fixes
