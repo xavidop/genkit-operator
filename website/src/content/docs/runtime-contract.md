@@ -144,6 +144,7 @@ same provider without collision.
 | vertexai  | `GOOGLE_APPLICATION_CREDENTIALS`                                 | runner points the env var at the mounted file    |
 | ollama    | _(none)_                                                         | requires `plugin.extraConfig.serverAddress`      |
 | bedrock   | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`| AWS SDK default credential chain; region from `plugin.region` or `extraConfig.region` |
+| azureaifoundry | `AZURE_OPENAI_API_KEY`                                      | requires `plugin.extraConfig.endpoint` (or `AZURE_OPENAI_ENDPOINT` key); optional `extraConfig.apiVersion` |
 
 **Single-flow** Pods receive credentials via `envFrom`. **FlowSet**
 Pods receive credentials as files under

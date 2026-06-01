@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azureaifoundry-credentials
+  namespace: default
+type: Opaque
+stringData:
+  AZURE_OPENAI_API_KEY: replace-me
+  # AZURE_OPENAI_ENDPOINT can also be provided via the Secret (and listed
+  # under credentialKeys) instead of plugin.extraConfig.endpoint.
+  # AZURE_OPENAI_ENDPOINT: https://your-resource.openai.azure.com/
+---
+apiVersion: genkit.dev/v1alpha1
+kind: PluginConfig
+metadata:
+  name: azureaifoundry
+  namespace: default
+spec:
+  type: azureaifoundry
+  credentialsRef:
+    name: azureaifoundry-credentials
+  credentialKeys:
+    - AZURE_OPENAI_API_KEY
+  extraConfig:
+    endpoint: https://your-resource.openai.azure.com/
+    # apiVersion is optional; the plugin uses the latest by default.
+    # apiVersion: "2024-02-15-preview"
+---
+apiVersion: genkit.dev/v1alpha1
+kind: Model
+metadata:
+  name: azureaifoundry-gpt-4o
+  namespace: default
+spec:
+  provider: azureaifoundry
+  # Use your Azure deployment name (not the underlying model name).
+  model: gpt-4o
+  pluginConfigRef:
+    name: azureaifoundry
+  info:
+    label: Azure AI Foundry - GPT-4o
+    stage: featured
+    supports:
+      multiturn: true
+      media: true
+      tools: true
+      systemRole: true
+  defaultConfig:
+    temperature: 0.3
+    maxOutputTokens: 1024
+    topP: 0.9

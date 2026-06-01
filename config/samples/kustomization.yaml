@@ -2,6 +2,7 @@
 resources:
 - genkit_v1alpha1_pluginconfig.yaml
 - genkit_v1alpha1_pluginconfig_bedrock.yaml
+- genkit_v1alpha1_pluginconfig_azureaifoundry.yaml
 - genkit_v1alpha1_prompt.yaml
 - genkit_v1alpha1_tool.yaml
 - genkit_v1alpha1_dataset.yaml

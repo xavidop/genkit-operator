@@ -34,6 +34,7 @@ following providers:
 | `vertexai`  | `genkit-go/plugins/googlegenai` (`VertexAI`)    | [Vertex AI](/genkit-operator/plugins/vertexai/)       |
 | `ollama`    | `genkit-go/plugins/ollama`                      | [Ollama](/genkit-operator/plugins/ollama/)            |
 | `bedrock`   | `github.com/xavidop/genkit-aws-bedrock-go`      | [AWS Bedrock](/genkit-operator/plugins/bedrock/)      |
+| `azureaifoundry` | `github.com/xavidop/genkit-azure-foundry-go` | [Azure AI Foundry](/genkit-operator/plugins/azureaifoundry/) |
 
 ## Adding a new provider
 

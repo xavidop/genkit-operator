@@ -24,6 +24,7 @@ import (
 	"github.com/firebase/genkit/go/plugins/googlegenai"
 	"github.com/firebase/genkit/go/plugins/ollama"
 	bedrock "github.com/xavidop/genkit-aws-bedrock-go"
+	azureaifoundry "github.com/xavidop/genkit-azure-foundry-go"
 )
 
 // pluginBuilder constructs a genkit-go api.Plugin from the operator's
@@ -39,23 +40,25 @@ type pluginBuilder func(cfg *runtimeConfig, credentialsDir string, credentialKey
 // Adding a new provider is a one-liner: import its package, write the
 // builder closure, register it here. No other file needs to change.
 var pluginRegistry = map[string]pluginBuilder{
-	"anthropic": buildAnthropic,
-	"openai":    buildOpenAI,
-	"googleai":  buildGoogleAI,
-	"vertexai":  buildVertexAI,
-	"ollama":    buildOllama,
-	"bedrock":   buildBedrock,
+	"anthropic":      buildAnthropic,
+	"openai":         buildOpenAI,
+	"googleai":       buildGoogleAI,
+	"vertexai":       buildVertexAI,
+	"ollama":         buildOllama,
+	"bedrock":        buildBedrock,
+	"azureaifoundry": buildAzureAIFoundry,
 }
 
 // defaultCredentialKeys is the conventional Secret-key fallback per
 // plugin type. Used only when PluginConfig.spec.credentialKeys is empty.
 var defaultCredentialKeys = map[string][]string{
-	"anthropic": {"ANTHROPIC_API_KEY"},
-	"openai":    {"OPENAI_API_KEY"},
-	"googleai":  {"GEMINI_API_KEY", "GOOGLE_API_KEY"},
-	"vertexai":  {"GOOGLE_APPLICATION_CREDENTIALS"},
-	"ollama":    nil,
-	"bedrock":   {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"},
+	"anthropic":      {"ANTHROPIC_API_KEY"},
+	"openai":         {"OPENAI_API_KEY"},
+	"googleai":       {"GEMINI_API_KEY", "GOOGLE_API_KEY"},
+	"vertexai":       {"GOOGLE_APPLICATION_CREDENTIALS"},
+	"ollama":         nil,
+	"bedrock":        {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"},
+	"azureaifoundry": {"AZURE_OPENAI_API_KEY"},
 }
 
 func buildPlugin(cfg *runtimeConfig, credentialsDir string) (api.Plugin, error) {
@@ -223,4 +226,37 @@ func buildBedrock(cfg *runtimeConfig, credentialsDir string, keys []string) (api
 		}
 	}
 	return &bedrock.Bedrock{Region: region}, nil
+}
+
+// azureAIFoundryExtraConfig is the optional shape of plugin.extraConfig
+// for the azureaifoundry plugin. Endpoint may also be supplied via the
+// AZURE_OPENAI_ENDPOINT credential key (env var or mounted file).
+type azureAIFoundryExtraConfig struct {
+	Endpoint   string `json:"endpoint,omitempty"`
+	APIVersion string `json:"apiVersion,omitempty"`
+}
+
+func buildAzureAIFoundry(cfg *runtimeConfig, credentialsDir string, keys []string) (api.Plugin, error) {
+	var x azureAIFoundryExtraConfig
+	if len(cfg.Plugin.ExtraConfig) > 0 {
+		_ = json.Unmarshal(cfg.Plugin.ExtraConfig, &x)
+	}
+	endpoint := x.Endpoint
+	if endpoint == "" {
+		if _, v, ok := readCredential(credentialsDir, []string{"AZURE_OPENAI_ENDPOINT"}); ok {
+			endpoint = v
+		}
+	}
+	if endpoint == "" {
+		return nil, fmt.Errorf("azureaifoundry: endpoint is required (set plugin.extraConfig.endpoint or AZURE_OPENAI_ENDPOINT)")
+	}
+	apiKey, err := requireCredential("azureaifoundry", credentialsDir, keys)
+	if err != nil {
+		return nil, err
+	}
+	return &azureaifoundry.AzureAIFoundry{
+		Endpoint:   endpoint,
+		APIKey:     apiKey,
+		APIVersion: x.APIVersion,
+	}, nil
 }

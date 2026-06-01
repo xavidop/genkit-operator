@@ -25,13 +25,14 @@ import (
 // PluginConfigSpec defines the desired state of PluginConfig.
 //
 // A PluginConfig describes a Genkit model provider (vertexai, googleai,
-// openai, anthropic, bedrock, ollama, ...). It bundles the credentials
+// openai, anthropic, bedrock, ollama, azureaifoundry, ...). It bundles
+// the credentials
 // reference plus any provider-specific configuration that downstream Model
 // CRs need.
 type PluginConfigSpec struct {
 	// Type is the provider type identifier. Must match a plugin known to the
 	// runtime container (e.g. "vertexai", "googleai", "openai", "anthropic",
-	// "bedrock", "ollama").
+	// "bedrock", "ollama", "azureaifoundry").
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
 	Type string `json:"type"`

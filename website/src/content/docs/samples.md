@@ -20,7 +20,9 @@ kubectl apply -k https://github.com/xavidop/genkit-operator//config/samples?ref=
 
 The default sample uses Anthropic. The companion
 [`genkit_v1alpha1_pluginconfig_bedrock.yaml`](https://github.com/xavidop/genkit-operator/blob/main/config/samples/genkit_v1alpha1_pluginconfig_bedrock.yaml)
-shows the same pattern for AWS Bedrock.
+shows the same pattern for AWS Bedrock, and
+[`genkit_v1alpha1_pluginconfig_azureaifoundry.yaml`](https://github.com/xavidop/genkit-operator/blob/main/config/samples/genkit_v1alpha1_pluginconfig_azureaifoundry.yaml)
+for Azure AI Foundry.
 
 ### `genkit_v1alpha1_model.yaml`
 

@@ -23,7 +23,7 @@ one or more `Prompt`s and (optionally) `Tool`s. The `Model` points at a
 ## PluginConfig
 
 A provider definition. The `type` field selects a builder in the runner
-(`anthropic`, `openai`, `googleai`, `vertexai`, `ollama`, `bedrock`).
+(`anthropic`, `openai`, `googleai`, `vertexai`, `ollama`, `bedrock`, `azureaifoundry`).
 
 ```yaml
 apiVersion: genkit.dev/v1alpha1

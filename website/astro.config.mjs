@@ -54,6 +54,7 @@ export default defineConfig({
             { label: "Google AI (Gemini)", slug: "plugins/googleai" },
             { label: "Vertex AI", slug: "plugins/vertexai" },
             { label: "AWS Bedrock", slug: "plugins/bedrock" },
+            { label: "Azure AI Foundry", slug: "plugins/azureaifoundry" },
             { label: "Ollama", slug: "plugins/ollama" },
           ],
         },
