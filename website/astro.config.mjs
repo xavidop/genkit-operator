@@ -3,7 +3,7 @@ import starlight from "@astrojs/starlight";
 
 export default defineConfig({
   site: "https://xavidop.github.io",
-  base: "/",
+  base: "/genkit-operator",
   integrations: [
     starlight({
       title: "Genkit Operator",
