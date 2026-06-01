@@ -87,19 +87,19 @@ func registeredPluginNames() []string {
 // readCredential returns the first credential key that resolves. When
 // credentialsDir is non-empty it reads files; otherwise it falls back to
 // environment variables. The bool indicates whether anything was found.
-func readCredential(credentialsDir string, keys []string) (string, string, bool) {
+func readCredential(credentialsDir string, keys []string) (string, bool) {
 	for _, k := range keys {
 		if credentialsDir != "" {
 			if b, err := os.ReadFile(filepath.Join(credentialsDir, k)); err == nil {
-				return k, strings.TrimSpace(string(b)), true
+				return strings.TrimSpace(string(b)), true
 			}
 			continue
 		}
 		if v := os.Getenv(k); v != "" {
-			return k, v, true
+			return v, true
 		}
 	}
-	return "", "", false
+	return "", false
 }
 
 // requireCredential is like readCredential but returns an error when no
@@ -108,7 +108,7 @@ func requireCredential(provider, credentialsDir string, keys []string) (string, 
 	if len(keys) == 0 {
 		return "", fmt.Errorf("%s: no credential keys configured", provider)
 	}
-	_, v, ok := readCredential(credentialsDir, keys)
+	v, ok := readCredential(credentialsDir, keys)
 	if !ok {
 		src := "environment"
 		if credentialsDir != "" {
@@ -243,12 +243,13 @@ func buildAzureAIFoundry(cfg *runtimeConfig, credentialsDir string, keys []strin
 	}
 	endpoint := x.Endpoint
 	if endpoint == "" {
-		if _, v, ok := readCredential(credentialsDir, []string{"AZURE_OPENAI_ENDPOINT"}); ok {
+		if v, ok := readCredential(credentialsDir, []string{"AZURE_OPENAI_ENDPOINT"}); ok {
 			endpoint = v
 		}
 	}
 	if endpoint == "" {
-		return nil, fmt.Errorf("azureaifoundry: endpoint is required (set plugin.extraConfig.endpoint or AZURE_OPENAI_ENDPOINT)")
+		return nil, fmt.Errorf("azureaifoundry: endpoint is required " +
+			"(set plugin.extraConfig.endpoint or AZURE_OPENAI_ENDPOINT)")
 	}
 	apiKey, err := requireCredential("azureaifoundry", credentialsDir, keys)
 	if err != nil {
