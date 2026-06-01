@@ -2,12 +2,15 @@ name: Release
 
 "on":
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: write
   packages: write
+  issues: write
+  pull-requests: write
 
 env:
   REGISTRY: ghcr.io
@@ -16,27 +19,79 @@ env:
   CHART_REGISTRY: oci://ghcr.io/${{ github.repository_owner }}/charts
 
 jobs:
-  images:
-    name: Build and push container images
+  # ──────────────────────────────────────────────────────────────────────
+  # 1) Decide whether there is a new release using Conventional Commits.
+  # ──────────────────────────────────────────────────────────────────────
+  release:
+    name: Semantic release
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.meta.outputs.version }}
-      tag: ${{ steps.meta.outputs.tag }}
+      published: ${{ steps.semrel.outputs.new_release_published }}
+      version: ${{ steps.semrel.outputs.new_release_version }}
+      tag: ${{ steps.semrel.outputs.new_release_git_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Semantic Release
+        id: semrel
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          semantic_version: 24
+          extra_plugins: |
+            @semantic-release/changelog@6
+            @semantic-release/git@10
+            conventional-changelog-conventionalcommits@7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ──────────────────────────────────────────────────────────────────────
+  # 2) Build manager + runner images, one job per (image, platform), in
+  #    parallel. Each job pushes by digest only — no tags yet.
+  # ──────────────────────────────────────────────────────────────────────
+  build:
+    name: Build ${{ matrix.image }} (${{ matrix.platform }})
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: manager
+            dockerfile: Dockerfile
+            repo: ghcr.io/xavidop/genkit-operator
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - image: manager
+            dockerfile: Dockerfile
+            repo: ghcr.io/xavidop/genkit-operator
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+          - image: runner
+            dockerfile: Dockerfile.runner
+            repo: ghcr.io/xavidop/genkit-runner
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - image: runner
+            dockerfile: Dockerfile.runner
+            repo: ghcr.io/xavidop/genkit-runner
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }}
           persist-credentials: false
-
-      - name: Resolve version
-        id: meta
-        run: |
-          ref="${GITHUB_REF#refs/tags/}"
-          echo "version=${ref#v}" >> "$GITHUB_OUTPUT"
-          echo "tag=${ref}" >> "$GITHUB_OUTPUT"
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -48,38 +103,100 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push manager image
+      - name: Compute platform pair
+        id: pair
+        run: |
+          # turn "linux/amd64" into "linux-amd64" for filenames
+          echo "pair=${{ matrix.platform }}" | sed 's|/|-|g' >> "$GITHUB_OUTPUT"
+
+      - name: Build and push by digest
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ env.MANAGER_IMAGE }}:${{ steps.meta.outputs.tag }}
-            ${{ env.MANAGER_IMAGE }}:latest
+          file: ./${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platform }}
           provenance: false
+          outputs: type=image,name=${{ matrix.repo }},push-by-digest=true,name-canonical=true,push=true
 
-      - name: Build and push runner image
-        uses: docker/build-push-action@v6
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests/${{ matrix.image }}
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${{ matrix.image }}/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
         with:
-          context: .
-          file: ./Dockerfile.runner
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ env.RUNNER_IMAGE }}:${{ steps.meta.outputs.tag }}
-            ${{ env.RUNNER_IMAGE }}:latest
-          provenance: false
+          name: digests-${{ matrix.image }}-${{ steps.pair.outputs.pair }}
+          path: /tmp/digests/${{ matrix.image }}/*
+          if-no-files-found: error
+          retention-days: 1
 
+  # ──────────────────────────────────────────────────────────────────────
+  # 3) Merge per-platform digests into a single multi-arch manifest per
+  #    image, then push :<tag> and :latest.
+  # ──────────────────────────────────────────────────────────────────────
+  manifest:
+    name: Manifest ${{ matrix.image }}
+    needs: [release, build]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: manager
+            repo: ghcr.io/xavidop/genkit-operator
+          - image: runner
+            repo: ghcr.io/xavidop/genkit-runner
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests/${{ matrix.image }}
+          pattern: digests-${{ matrix.image }}-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push manifest
+        working-directory: /tmp/digests/${{ matrix.image }}
+        env:
+          REPO: ${{ matrix.repo }}
+          TAG: ${{ needs.release.outputs.tag }}
+        run: |
+          docker buildx imagetools create \
+            -t "${REPO}:${TAG}" \
+            -t "${REPO}:latest" \
+            $(printf "${REPO}@sha256:%s " *)
+
+      - name: Inspect manifest
+        env:
+          REPO: ${{ matrix.repo }}
+          TAG: ${{ needs.release.outputs.tag }}
+        run: docker buildx imagetools inspect "${REPO}:${TAG}"
+
+  # ──────────────────────────────────────────────────────────────────────
+  # 4) Package + push the Helm chart, generate install.yaml, attach both
+  #    to the GitHub release that semantic-release just created.
+  # ──────────────────────────────────────────────────────────────────────
   chart:
-    name: Package and push Helm chart
-    needs: images
+    name: Helm chart + install.yaml
+    needs: [release, manifest]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ needs.release.outputs.tag }}
           persist-credentials: false
 
       - name: Set up Helm
@@ -92,26 +209,17 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Resolve version
-        id: meta
-        run: |
-          ref="${GITHUB_REF#refs/tags/}"
-          echo "version=${ref#v}" >> "$GITHUB_OUTPUT"
-          echo "tag=${ref}" >> "$GITHUB_OUTPUT"
-
       - name: Stamp chart with release version and manager image
         env:
-          VERSION: ${{ steps.meta.outputs.version }}
-          TAG: ${{ steps.meta.outputs.tag }}
+          VERSION: ${{ needs.release.outputs.version }}
+          TAG: ${{ needs.release.outputs.tag }}
         run: |
           set -euo pipefail
           chart=dist/chart
-          # Pin chart.version, chart.appVersion, and the manager image tag/repo.
           sed -i -E "s/^version: .*/version: ${VERSION}/" "${chart}/Chart.yaml"
           sed -i -E "s/^appVersion: .*/appVersion: \"${VERSION}\"/" "${chart}/Chart.yaml"
           sed -i -E "s|repository: controller|repository: ${MANAGER_IMAGE}|" "${chart}/values.yaml"
           sed -i -E "s|tag: latest|tag: ${TAG}|" "${chart}/values.yaml"
-          cat "${chart}/Chart.yaml"
 
       - name: Package chart
         run: helm package dist/chart --destination dist/
@@ -121,18 +229,18 @@ jobs:
 
       - name: Push chart to GHCR
         env:
-          VERSION: ${{ steps.meta.outputs.version }}
+          VERSION: ${{ needs.release.outputs.version }}
         run: helm push "dist/genkit-operator-${VERSION}.tgz" "${CHART_REGISTRY}"
 
       - name: Generate install.yaml
         env:
-          IMG: ${{ env.MANAGER_IMAGE }}:${{ steps.meta.outputs.tag }}
+          IMG: ${{ env.MANAGER_IMAGE }}:${{ needs.release.outputs.tag }}
         run: make build-installer IMG="${IMG}"
 
-      - name: Create GitHub Release
+      - name: Attach assets to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          tag_name: ${{ needs.release.outputs.tag }}
           files: |
-            dist/genkit-operator-${{ steps.meta.outputs.version }}.tgz
+            dist/genkit-operator-${{ needs.release.outputs.version }}.tgz
             dist/install.yaml

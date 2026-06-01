@@ -1,0 +1,106 @@
+---
+title: Deploy a Flow
+description: From zero to a callable HTTP endpoint, step by step.
+---
+
+This guide deploys a single Flow exposed at `POST /greeter`, backed by
+Anthropic Claude.
+
+## 1. Credentials
+
+```bash
+kubectl create secret generic anthropic-credentials \
+  --from-literal=ANTHROPIC_API_KEY=sk-ant-...
+```
+
+## 2. Plugin
+
+```yaml
+apiVersion: genkit.dev/v1alpha1
+kind: PluginConfig
+metadata:
+  name: anthropic
+spec:
+  type: anthropic
+  credentialsRef:
+    name: anthropic-credentials
+  credentialKeys: [ANTHROPIC_API_KEY]
+```
+
+## 3. Model
+
+```yaml
+apiVersion: genkit.dev/v1alpha1
+kind: Model
+metadata:
+  name: claude-opus
+spec:
+  provider: anthropic
+  model: claude-opus-4-6
+  pluginConfigRef:
+    name: anthropic
+  defaultConfig:
+    temperature: 0.3
+    maxOutputTokens: 1024
+```
+
+## 4. Prompt
+
+```yaml
+apiVersion: genkit.dev/v1alpha1
+kind: Prompt
+metadata:
+  name: greeting
+spec:
+  content: |
+    ---
+    model: anthropic/claude-opus-4-6
+    temperature: 0.3
+    ---
+    Greet the user named {{name}} in a single sentence.
+```
+
+## 5. Flow
+
+```yaml
+apiVersion: genkit.dev/v1alpha1
+kind: Flow
+metadata:
+  name: greeter
+spec:
+  image: ghcr.io/xavidop/genkit-runner:v0.1.0
+  modelRef: { name: claude-opus }
+  promptRefs:
+    - { name: greeting }
+  port: 8080
+```
+
+## 6. Apply and verify
+
+```bash
+kubectl apply -f .
+kubectl get gfl greeter
+kubectl describe gfl greeter   # check Conditions
+```
+
+When `Ready=True`:
+
+```bash
+kubectl port-forward svc/greeter 8080:8080 &
+curl -s -X POST http://localhost:8080/greeter \
+  -H 'content-type: application/json' \
+  -d '{"name":"Ada"}'
+```
+
+## 7. Iterate
+
+Edit the `Prompt`, reapply, and watch the rolling update:
+
+```bash
+kubectl edit prompt greeting
+kubectl rollout status deploy/greeter
+```
+
+You don't need to bump anything else — the controller recomputes the
+content hash and patches the Deployment's Pod template annotation
+automatically.

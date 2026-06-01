@@ -125,7 +125,21 @@ make kind-deploy IMG=genkit-operator:dev KIND_CLUSTER=my-cluster
 ```
 
 ### To Deploy on the cluster
-**Build and push your image to the location specified by `IMG`:**
+
+Released images are published to GHCR by the [`Release` workflow](.github/workflows/release.yml)
+on every `v*` tag:
+
+* Manager: `ghcr.io/xavidop/genkit-operator:<tag>` (also `:latest`)
+* Runner:  `ghcr.io/xavidop/genkit-runner:<tag>` (also `:latest`)
+* Helm chart: `oci://ghcr.io/xavidop/charts/genkit-operator` (version = tag without the leading `v`)
+
+To deploy a published manager image directly:
+
+```sh
+make deploy IMG=ghcr.io/xavidop/genkit-operator:v0.1.0
+```
+
+To build and push your **own** image instead:
 
 ```sh
 make docker-build docker-push IMG=<some-registry>/genkit-operator:tag
@@ -154,6 +168,10 @@ make runner-build RUNNER_IMG=<some-registry>/genkit-runner:tag
 ```sh
 make runner-build runner-push RUNNER_IMG=<some-registry>/genkit-runner:tag
 ```
+
+Released runner images are available at `ghcr.io/xavidop/genkit-runner:<tag>`
+(also `:latest`). Reference them in `Flow.spec.image` / `FlowSet.spec.image`
+to avoid building locally.
 
 **Build + load into a local kind cluster (no registry required):**
 
@@ -197,6 +215,10 @@ make install
 **Deploy the Manager to the cluster with the image specified by `IMG`:**
 
 ```sh
+# Released image
+make deploy IMG=ghcr.io/xavidop/genkit-operator:v0.1.0
+
+# Or your own build
 make deploy IMG=<some-registry>/genkit-operator:tag
 ```
 
@@ -237,7 +259,14 @@ Following the options to release and provide this solution to the users.
 
 ### By providing a bundle with all YAML files
 
-1. Build the installer for the image built and published in the registry:
+The `Release` workflow attaches a ready-to-use `install.yaml` (pinned to the
+released manager image) to every GitHub Release. Install it with:
+
+```sh
+kubectl apply -f https://github.com/xavidop/genkit-operator/releases/download/v0.1.0/install.yaml
+```
+
+To regenerate it locally against a custom image:
 
 ```sh
 make build-installer IMG=<some-registry>/genkit-operator:tag
@@ -248,25 +277,29 @@ file in the dist directory. This file contains all the resources built
 with Kustomize, which are necessary to install this project without its
 dependencies.
 
-2. Using the installer
-
-Users can just run 'kubectl apply -f <URL for YAML BUNDLE>' to install
-the project, i.e.:
-
-```sh
-kubectl apply -f https://raw.githubusercontent.com/<org>/genkit-operator/<tag or branch>/dist/install.yaml
-```
-
 ### By providing a Helm Chart
 
-1. Build the chart using the optional helm plugin
+The chart is published as an OCI artifact on every release. Install it with:
+
+```sh
+helm install genkit-operator \
+  oci://ghcr.io/xavidop/charts/genkit-operator \
+  --version 0.1.0 \
+  --namespace genkit-operator-system --create-namespace
+```
+
+The chart is stamped with the matching manager image
+(`ghcr.io/xavidop/genkit-operator:<tag>`) at release time, so no extra
+`--set` flags are required.
+
+To regenerate the chart sources after changing the project:
 
 ```sh
 kubebuilder edit --plugins=helm/v2-alpha
 ```
 
-2. See that a chart was generated under 'dist/chart', and users
-can obtain this solution from there.
+A chart was generated under `dist/chart` and is what the release workflow
+packages and pushes.
 
 **NOTE:** If you change the project, you need to update the Helm Chart
 using the same command above to sync the latest changes. Furthermore,

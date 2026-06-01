@@ -1,0 +1,48 @@
+---
+title: Genkit Operator
+description: Run Genkit (Go) on Kubernetes by writing YAML. No Dockerfiles, no servers, no credential plumbing.
+template: splash
+hero:
+  tagline: Turn YAML into production-ready Genkit HTTP endpoints — declaratively, on Kubernetes.
+  actions:
+    - text: Get started
+      link: /quickstart/
+      icon: right-arrow
+      variant: primary
+    - text: Why this project?
+      link: /why/
+      icon: open-book
+    - text: View on GitHub
+      link: https://github.com/xavidop/genkit-operator
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## What it does
+
+You describe your AI app as a handful of Kubernetes resources — `Prompt`,
+`Model`, `PluginConfig`, `Flow` (or `FlowSet`) — and the operator builds,
+runs, and exposes each flow at `POST /<flow-name>`. Provider credentials
+are resolved from `Secret`s, prompts are projected as files, and a
+content-hash drives rolling updates whenever anything changes.
+
+<CardGrid stagger>
+  <Card title="Declarative" icon="document">
+    Apply YAML. Get an HTTP endpoint. Everything else (Deployment,
+    Service, ConfigMaps, Secret mounts, rollouts) is handled for you.
+  </Card>
+  <Card title="Multi-provider" icon="puzzle">
+    First-party plugin support for Anthropic, OpenAI, Google AI, Vertex
+    AI, AWS Bedrock, and Ollama. Pluggable per `PluginConfig`.
+  </Card>
+  <Card title="Built for GitOps" icon="rocket">
+    Server-Side Apply, owner references, content hashes — fits Argo CD
+    and Flux out of the box.
+  </Card>
+  <Card title="Bring your own runner" icon="setting">
+    The reference runtime is one of many. Build a custom runner image
+    that consumes the same on-disk contract.
+  </Card>
+</CardGrid>
