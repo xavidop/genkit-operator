@@ -1,3 +1,9 @@
+## [0.3.0](https://github.com/xavidop/genkit-operator/compare/v0.2.3...v0.3.0) (2026-06-02)
+
+### Features
+
+* done TODOs + replace versions ([f414715](https://github.com/xavidop/genkit-operator/commit/f414715f68041d957809b4e29fa3131a455f0606))
+
 ## [0.2.3](https://github.com/xavidop/genkit-operator/compare/v0.2.2...v0.2.3) (2026-06-01)
 
 ### Bug Fixes
