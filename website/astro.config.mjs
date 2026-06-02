@@ -1,9 +1,13 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
+import remarkLatestVersion from "./src/lib/remark-latest-version.mjs";
 
 export default defineConfig({
   site: "https://xavidop.github.io",
   base: "/genkit-operator",
+  markdown: {
+    remarkPlugins: [remarkLatestVersion],
+  },
   integrations: [
     starlight({
       title: "Genkit Operator",

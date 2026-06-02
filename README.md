@@ -1,8 +1,36 @@
 # genkit-operator
-// TODO(user): Add simple overview of use/purpose
+
+A Kubernetes operator that turns a handful of YAML files into
+production-ready [Genkit](https://genkit.dev) (Go) HTTP endpoints —
+no Dockerfiles to write, no servers to wire up, no credential plumbing
+to maintain. Declare your prompts, models, tools and flows as Custom
+Resources and the operator assembles, deploys and serves them for you.
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+
+`genkit-operator` is the easiest way to run [Genkit](https://genkit.dev)
+flows on Kubernetes. Instead of building your own image and writing the
+boilerplate to load prompts, register plugins and serve HTTP, you submit
+a small set of Custom Resources — `PluginConfig`, `Model`, `Prompt`,
+`Tool`, `Flow` / `FlowSet`, and optionally `Dataset` / `Eval` — and the
+operator does the rest:
+
+- Resolves all references and renders a normalized `manifest.json` plus
+  one `config.json` per flow into ConfigMaps.
+- Mounts provider credentials from your own `Secrets` into the runner
+  Pod under `/genkit/flows/<flow>/credentials/`.
+- Creates and owns the `Deployment` and `Service` that expose each flow
+  at `POST /<flow-name>` on the configured port.
+- Watches every referenced object and triggers a rolling update via a
+  content-hash Pod template annotation whenever anything changes.
+- Ships a reference runner image (`ghcr.io/xavidop/genkit-runner`) with
+  built-in support for Anthropic, OpenAI, Google AI, Vertex AI, AWS
+  Bedrock, Azure AI Foundry and Ollama — but you can swap in your own
+  runtime by pointing `spec.image` at any image that honors the
+  [runtime contract](docs/runtime-contract.md).
+
+The result: a GitOps-friendly way to ship Genkit flows where the unit
+of deployment is a YAML file, not a container.
 
 ## Architecture
 
@@ -309,7 +337,38 @@ previously added to 'dist/chart/values.yaml' or 'dist/chart/manager/manager.yaml
 is manually re-applied afterwards.
 
 ## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
+
+Contributions are very welcome — bug reports, feature requests, docs
+improvements and code changes alike. The typical workflow is:
+
+1. **Open an issue first** for anything non-trivial (new CRD field,
+   behavior change, new plugin) so we can agree on the design before
+   you spend time on a PR.
+2. **Fork and branch** off `main`. Keep PRs focused: one logical change
+   per PR makes review much easier.
+3. **Run the local checks** before pushing:
+   ```sh
+   make lint-fix     # auto-fix style
+   make test         # unit + envtest suite
+   make manifests generate  # only if you touched *_types.go or markers
+   ```
+4. **Test against a real cluster** when changing controller behavior:
+   ```sh
+   kind create cluster --name genkit
+   make kind-deploy IMG=genkit-operator:dev
+   kubectl apply -k config/samples/
+   ```
+5. **Update docs** under `docs/` and the [Astro site](website/) when
+   you add user-facing features, and add a `CHANGELOG.md` entry under
+   the `Unreleased` section.
+6. **Follow the conventions** documented in [AGENTS.md](AGENTS.md) —
+   never edit auto-generated files (`zz_generated.*`,
+   `config/crd/bases/*`, `config/rbac/role.yaml`,
+   `config/webhook/manifests.yaml`, `PROJECT`) by hand; regenerate them
+   with `make manifests generate` instead.
+
+By contributing you agree that your contributions are licensed under
+the Apache License 2.0.
 
 **NOTE:** Run `make help` for more information on all potential `make` targets
 

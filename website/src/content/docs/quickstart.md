@@ -21,7 +21,7 @@ The fastest path is the published Helm chart:
 ```bash
 helm install genkit-operator \
   oci://ghcr.io/xavidop/charts/genkit-operator \
-  --version 0.1.0 \
+  --version {{LATEST_VERSION}} \
   --namespace genkit-operator-system --create-namespace
 ```
 
@@ -29,7 +29,7 @@ Prefer plain YAML? Use the bundled installer attached to each GitHub
 Release:
 
 ```bash
-kubectl apply -f https://github.com/xavidop/genkit-operator/releases/download/v0.1.0/install.yaml
+kubectl apply -f https://github.com/xavidop/genkit-operator/releases/latest/download/install.yaml
 ```
 
 Verify the controller is up:

@@ -26,7 +26,7 @@ kind: FlowSet
 metadata:
   name: assistants
 spec:
-  image: ghcr.io/xavidop/genkit-runner:v0.1.0
+  image: ghcr.io/xavidop/genkit-runner:{{LATEST_TAG}}
   port: 8080
   flows:
     - name: greeter
