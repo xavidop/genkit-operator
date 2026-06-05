@@ -180,6 +180,7 @@ func (r *FlowReconciler) resolveDeps(ctx context.Context, flow *genkitv1alpha1.F
 			}
 			return nil, err
 		}
+		out.secret = &secret
 	}
 	return out, nil
 }
@@ -240,6 +241,8 @@ func (r *FlowReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&genkitv1alpha1.Prompt{}, flowDependencyMapper(r.Client, "Prompt")).
 		Watches(&genkitv1alpha1.Tool{}, flowDependencyMapper(r.Client, "Tool")).
 		Watches(&genkitv1alpha1.Model{}, flowDependencyMapper(r.Client, "Model")).
+		Watches(&genkitv1alpha1.PluginConfig{}, pluginConfigToFlowMapper(r.Client)).
+		Watches(&corev1.Secret{}, secretToFlowMapper(r.Client)).
 		Named("flow").
 		Complete(r)
 }

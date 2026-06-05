@@ -64,6 +64,10 @@ type resolvedFlowSetFlow struct {
 	// credentialsRef. Used to mount per-flow credentials at
 	// /genkit/flows/<flow>/credentials/.
 	secretName string
+	// secret is the resolved credentials Secret. Its data is included in
+	// the FlowSet contentHash so that rotating credentials triggers a
+	// Deployment rollout — the runner re-reads credential files on start.
+	secret *corev1.Secret
 }
 
 // resolvedFlowSet aggregates resolved per-flow dependencies.
@@ -177,6 +181,22 @@ func renderFlowSet(fs *genkitv1alpha1.FlowSet, deps *resolvedFlowSet) (*rendered
 		flowSetManifestCMName(fs), fs.Namespace, baseLabels, manifestData,
 	)
 	allCMData = append(allCMData, manifestData)
+
+	// Fold the data of every distinct credentials Secret into the hash so
+	// credential rotation triggers a rollout.
+	seenSecret := map[string]struct{}{}
+	for _, rf := range deps.flows {
+		if rf.secret == nil {
+			continue
+		}
+		if _, dup := seenSecret[rf.secret.Name]; dup {
+			continue
+		}
+		seenSecret[rf.secret.Name] = struct{}{}
+		if payload := secretHashPayload(rf.secret); payload != nil {
+			allCMData = append(allCMData, payload)
+		}
+	}
 
 	hash := computeContentHash(allCMData...)
 

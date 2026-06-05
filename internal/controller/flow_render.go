@@ -79,6 +79,10 @@ type resolvedDeps struct {
 	tools   []genkitv1alpha1.Tool
 	model   *genkitv1alpha1.Model
 	plugin  *genkitv1alpha1.PluginConfig
+	// secret is the credentials Secret referenced by plugin.spec.credentialsRef.
+	// It is hashed into contentHash so that rotating credentials triggers
+	// a Deployment rollout (env vars from envFrom only refresh on Pod start).
+	secret *corev1.Secret
 }
 
 func cmName(flow *genkitv1alpha1.Flow, suffix string) string {
@@ -119,8 +123,13 @@ func renderFlow(flow *genkitv1alpha1.Flow, deps *resolvedDeps) (*renderedFlow, e
 		"config.json": string(configBytes),
 	})
 
-	// Hash all three rendered payloads in a deterministic order.
-	hash := computeContentHash(promptsCM.Data, toolsCM.Data, configCM.Data)
+	// Hash all three rendered payloads in a deterministic order, plus the
+	// credentials Secret data when present, so credential rotation forces
+	// a Pod rollout (envFrom env vars only refresh on Pod start).
+	hash := computeContentHash(
+		promptsCM.Data, toolsCM.Data, configCM.Data,
+		secretHashPayload(deps.secret),
+	)
 
 	service := newService(flow, baseLabels)
 	deploy := newDeployment(flow, deps, baseLabels, hash)
@@ -215,6 +224,21 @@ func computeContentHash(payloads ...map[string]string) string {
 	sort.Slice(flat, func(i, j int) bool { return flat[i].K < flat[j].K })
 	buf, _ := json.Marshal(flat)
 	return sha256Hex(buf)
+}
+
+// secretHashPayload converts a Secret's data into a string map suitable
+// for computeContentHash. Returns nil for a nil Secret so callers can
+// pass it unconditionally. Keys are namespaced by "secret/<name>/" so
+// multiple secrets in the same hash don't collide.
+func secretHashPayload(s *corev1.Secret) map[string]string {
+	if s == nil {
+		return nil
+	}
+	out := make(map[string]string, len(s.Data))
+	for k, v := range s.Data {
+		out["secret/"+s.Name+"/"+k] = sha256Hex(v)
+	}
+	return out
 }
 
 func newService(flow *genkitv1alpha1.Flow, labels map[string]string) *corev1.Service {

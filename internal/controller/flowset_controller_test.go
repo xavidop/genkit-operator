@@ -36,7 +36,7 @@ var _ = Describe("FlowSet Controller", func() {
 
 	It("renders one Deployment + Service + per-flow ConfigMaps + manifest", func() {
 		name := uniqueName("fs-ok")
-		m := makeReadyModel(ns, name+"-model")
+		m := makeReadyModel(name + "-model")
 		pa := makeReadyPrompt(name+"-pa", "---\nmodel: x\n---\nhola")
 		pb := makeReadyPrompt(name+"-pb", "---\nmodel: x\n---\nhello")
 
@@ -129,7 +129,7 @@ var _ = Describe("FlowSet Controller", func() {
 
 	It("garbage-collects per-flow ConfigMaps when a flow is removed", func() {
 		name := uniqueName("fs-gc")
-		m := makeReadyModel(ns, name+"-model")
+		m := makeReadyModel(name + "-model")
 		pa := makeReadyPrompt(name+"-pa", "---\nmodel: x\n---\na")
 		pb := makeReadyPrompt(name+"-pb", "---\nmodel: x\n---\nb")
 

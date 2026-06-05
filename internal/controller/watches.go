@@ -188,3 +188,161 @@ func flowReferences(f *genkitv1alpha1.Flow, kind, name string) bool {
 	}
 	return false
 }
+
+// pluginConfigToFlowMapper enqueues every Flow whose Model points at the
+// given PluginConfig. This guarantees a Flow reconcile whenever the
+// PluginConfig (or, transitively, its credentials Secret) changes — even
+// if intermediate controllers produce no-op status patches.
+func pluginConfigToFlowMapper(c client.Client) handler.EventHandler {
+	return handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
+		pc, ok := obj.(*genkitv1alpha1.PluginConfig)
+		if !ok {
+			return nil
+		}
+		return flowsReferencingPluginConfig(ctx, c, pc.Namespace, pc.Name)
+	})
+}
+
+// secretToFlowMapper enqueues every Flow whose chain
+// Flow → Model → PluginConfig → credentialsRef matches the changed Secret.
+// Used to roll a Flow Deployment when API credentials rotate.
+func secretToFlowMapper(c client.Client) handler.EventHandler {
+	return handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
+		secret, ok := obj.(*corev1.Secret)
+		if !ok {
+			return nil
+		}
+		var pcs genkitv1alpha1.PluginConfigList
+		if err := c.List(ctx, &pcs, client.InNamespace(secret.Namespace)); err != nil {
+			return nil
+		}
+		var out []reconcile.Request
+		seen := map[types.NamespacedName]struct{}{}
+		for _, pc := range pcs.Items {
+			if pc.Spec.CredentialsRef.Name != secret.Name {
+				continue
+			}
+			for _, req := range flowsReferencingPluginConfig(ctx, c, pc.Namespace, pc.Name) {
+				if _, dup := seen[req.NamespacedName]; dup {
+					continue
+				}
+				seen[req.NamespacedName] = struct{}{}
+				out = append(out, req)
+			}
+		}
+		return out
+	})
+}
+
+// pluginConfigToFlowSetMapper enqueues every FlowSet whose any flow's
+// Model references the given PluginConfig.
+func pluginConfigToFlowSetMapper(c client.Client) handler.EventHandler {
+	return handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
+		pc, ok := obj.(*genkitv1alpha1.PluginConfig)
+		if !ok {
+			return nil
+		}
+		return flowSetsReferencingPluginConfig(ctx, c, pc.Namespace, pc.Name)
+	})
+}
+
+// secretToFlowSetMapper enqueues every FlowSet whose any flow's chain
+// reaches the changed Secret via PluginConfig.credentialsRef.
+func secretToFlowSetMapper(c client.Client) handler.EventHandler {
+	return handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
+		secret, ok := obj.(*corev1.Secret)
+		if !ok {
+			return nil
+		}
+		var pcs genkitv1alpha1.PluginConfigList
+		if err := c.List(ctx, &pcs, client.InNamespace(secret.Namespace)); err != nil {
+			return nil
+		}
+		var out []reconcile.Request
+		seen := map[types.NamespacedName]struct{}{}
+		for _, pc := range pcs.Items {
+			if pc.Spec.CredentialsRef.Name != secret.Name {
+				continue
+			}
+			for _, req := range flowSetsReferencingPluginConfig(ctx, c, pc.Namespace, pc.Name) {
+				if _, dup := seen[req.NamespacedName]; dup {
+					continue
+				}
+				seen[req.NamespacedName] = struct{}{}
+				out = append(out, req)
+			}
+		}
+		return out
+	})
+}
+
+// flowsReferencingPluginConfig returns reconcile requests for every Flow
+// in the namespace whose ModelRef points at a Model that references the
+// given PluginConfig.
+func flowsReferencingPluginConfig(ctx context.Context, c client.Client, namespace, pcName string) []reconcile.Request {
+	var models genkitv1alpha1.ModelList
+	if err := c.List(ctx, &models, client.InNamespace(namespace)); err != nil {
+		return nil
+	}
+	modelNames := map[string]struct{}{}
+	for _, m := range models.Items {
+		if m.Spec.PluginConfigRef.Name == pcName {
+			modelNames[m.Name] = struct{}{}
+		}
+	}
+	if len(modelNames) == 0 {
+		return nil
+	}
+	var flows genkitv1alpha1.FlowList
+	if err := c.List(ctx, &flows, client.InNamespace(namespace)); err != nil {
+		return nil
+	}
+	var out []reconcile.Request
+	for _, f := range flows.Items {
+		if f.Spec.ModelRef == nil {
+			continue
+		}
+		if _, ok := modelNames[f.Spec.ModelRef.Name]; !ok {
+			continue
+		}
+		out = append(out, reconcile.Request{
+			NamespacedName: types.NamespacedName{Namespace: f.Namespace, Name: f.Name},
+		})
+	}
+	return out
+}
+
+// flowSetsReferencingPluginConfig returns reconcile requests for every
+// FlowSet in the namespace where any flow's modelRef points at a Model
+// that references the given PluginConfig.
+func flowSetsReferencingPluginConfig(ctx context.Context, c client.Client, namespace, pcName string) []reconcile.Request {
+	var models genkitv1alpha1.ModelList
+	if err := c.List(ctx, &models, client.InNamespace(namespace)); err != nil {
+		return nil
+	}
+	modelNames := map[string]struct{}{}
+	for _, m := range models.Items {
+		if m.Spec.PluginConfigRef.Name == pcName {
+			modelNames[m.Name] = struct{}{}
+		}
+	}
+	if len(modelNames) == 0 {
+		return nil
+	}
+	var sets genkitv1alpha1.FlowSetList
+	if err := c.List(ctx, &sets, client.InNamespace(namespace)); err != nil {
+		return nil
+	}
+	var out []reconcile.Request
+	for _, fs := range sets.Items {
+		for _, f := range fs.Spec.Flows {
+			if _, ok := modelNames[f.ModelRef.Name]; ok {
+				out = append(out, reconcile.Request{
+					NamespacedName: types.NamespacedName{Namespace: fs.Namespace, Name: fs.Name},
+				})
+				break
+			}
+		}
+	}
+	return out
+}

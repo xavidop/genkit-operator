@@ -4,12 +4,11 @@ metadata:
   name: greeting
   namespace: default
 spec:
-  description: Greets a user by name using Claude Opus 4.6.
+  description: Greets a user by name using Claude Opus 4.7.
   content: |
     ---
-    model: anthropic/claude-opus-4-6
+    model: anthropic/claude-opus-4-7
     config:
-      temperature: 0.3
       max_tokens: 256
     input:
       schema:

@@ -30,7 +30,8 @@ import (
 )
 
 // makeReadyModel creates a Ready Model (with backing PluginConfig + Secret).
-func makeReadyModel(ns, name string) *genkitv1alpha1.Model {
+func makeReadyModel(name string) *genkitv1alpha1.Model {
+	const ns = "default"
 	pc := makeReadyPluginConfig(ns, name+"-pc")
 	m := &genkitv1alpha1.Model{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
@@ -76,7 +77,7 @@ var _ = Describe("Flow Controller", func() {
 
 	It("renders Deployment, Service, and ConfigMaps on happy path", func() {
 		name := uniqueName("flow-ok")
-		m := makeReadyModel(ns, name+"-model")
+		m := makeReadyModel(name + "-model")
 		p := makeReadyPrompt(name+"-prompt", "---\nmodel: x\n---\nhi")
 
 		flow := &genkitv1alpha1.Flow{
@@ -153,6 +154,46 @@ var _ = Describe("Flow Controller", func() {
 		pr := &PromptReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
 		_, err = pr.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: p.Name}})
 		Expect(err).NotTo(HaveOccurred())
+
+		_, err = r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: name}})
+		Expect(err).NotTo(HaveOccurred())
+		got2 := &genkitv1alpha1.Flow{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, got2)).To(Succeed())
+		Expect(got2.Status.ContentHash).NotTo(Equal(hash1))
+	})
+
+	It("changes content hash when the credentials Secret data changes", func() {
+		name := uniqueName("flow-sechash")
+		m := makeReadyModel(name + "-model")
+		p := makeReadyPrompt(name+"-prompt", "---\nmodel: x\n---\nhi")
+
+		flow := &genkitv1alpha1.Flow{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+			Spec: genkitv1alpha1.FlowSpec{
+				Image:    "ghcr.io/example/flow:1",
+				ModelRef: &corev1.LocalObjectReference{Name: m.Name},
+				Prompts:  []corev1.LocalObjectReference{{Name: p.Name}},
+			},
+		}
+		Expect(k8sClient.Create(ctx, flow)).To(Succeed())
+		DeferCleanup(func() { _ = k8sClient.Delete(ctx, flow) })
+
+		r := &FlowReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
+		_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: name}})
+		Expect(err).NotTo(HaveOccurred())
+		got1 := &genkitv1alpha1.Flow{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, got1)).To(Succeed())
+		hash1 := got1.Status.ContentHash
+		Expect(hash1).NotTo(BeEmpty())
+
+		// Rotate the credentials Secret value; the rendered hash MUST
+		// change so the Deployment Pod template annotation differs and a
+		// rollout is triggered (envFrom env vars only refresh on restart).
+		secretName := m.Spec.PluginConfigRef.Name + "-secret"
+		var sec corev1.Secret
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: secretName}, &sec)).To(Succeed())
+		sec.StringData = map[string]string{"ANTHROPIC_API_KEY": "rotated"}
+		Expect(k8sClient.Update(ctx, &sec)).To(Succeed())
 
 		_, err = r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: name}})
 		Expect(err).NotTo(HaveOccurred())

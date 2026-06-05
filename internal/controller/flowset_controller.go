@@ -217,6 +217,7 @@ func (r *FlowSetReconciler) resolveDeps(ctx context.Context, fs *genkitv1alpha1.
 			return nil, err
 		}
 		rf.secretName = secret.Name
+		rf.secret = &secret
 
 		out.flows = append(out.flows, rf)
 	}
@@ -335,6 +336,8 @@ func (r *FlowSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&genkitv1alpha1.Prompt{}, flowSetDependencyMapper(r.Client, "Prompt")).
 		Watches(&genkitv1alpha1.Tool{}, flowSetDependencyMapper(r.Client, "Tool")).
 		Watches(&genkitv1alpha1.Model{}, flowSetDependencyMapper(r.Client, "Model")).
+		Watches(&genkitv1alpha1.PluginConfig{}, pluginConfigToFlowSetMapper(r.Client)).
+		Watches(&corev1.Secret{}, secretToFlowSetMapper(r.Client)).
 		Named("flowset").
 		Complete(r)
 }
