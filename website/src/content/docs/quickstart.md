@@ -39,14 +39,7 @@ kubectl -n genkit-operator-system get pods
 kubectl get crds | grep genkit.dev
 ```
 
-## 2. Create provider credentials
-
-```bash
-kubectl create secret generic anthropic-credentials \
-  --from-literal=ANTHROPIC_API_KEY=sk-ant-...
-```
-
-## 3. Apply the sample CRs
+## 2. Apply the sample CRs
 
 The repository ships a complete end-to-end example under
 `config/samples/`:
@@ -56,7 +49,15 @@ kubectl apply -f https://raw.githubusercontent.com/xavidop/genkit-operator/main/
 kubectl apply -f https://raw.githubusercontent.com/xavidop/genkit-operator/main/config/samples/genkit_v1alpha1_model.yaml
 kubectl apply -f https://raw.githubusercontent.com/xavidop/genkit-operator/main/config/samples/genkit_v1alpha1_prompt.yaml
 kubectl apply -f https://raw.githubusercontent.com/xavidop/genkit-operator/main/config/samples/genkit_v1alpha1_tool.yaml
-kubectl apply -f https://raw.githubusercontent.com/xavidop/main/config/samples/genkit_v1alpha1_flow.yaml
+kubectl apply -f https://raw.githubusercontent.com/xavidop/genkit-operator/main/config/samples/genkit_v1alpha1_flow.yaml
+```
+
+## 3. Create provider credentials
+
+```bash
+kubectl create secret generic anthropic-credentials \
+  --from-literal=ANTHROPIC_API_KEY=sk-ant-... \
+  --dry-run=client -o yaml | kubectl apply -f -
 ```
 
 ## 4. Watch reconciliation
@@ -74,7 +75,7 @@ Once the `Deployment` is ready, the `Flow` reports `Phase=Running` and a
 
 ```bash
 kubectl port-forward svc/greeter 8080:8080 &
-curl -s -X POST http://localhost:8080/greeter \
+curl -s -X POST http://localhost:8080/greeting \
   -H 'content-type: application/json' \
   -d '{"name":"world"}'
 ```

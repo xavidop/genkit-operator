@@ -146,6 +146,10 @@ build-installer: manifests generate kustomize ## Generate a consolidated YAML wi
 	cd config/manager && "$(KUSTOMIZE)" edit set image controller=${IMG}
 	"$(KUSTOMIZE)" build config/default > dist/install.yaml
 
+.PHONY: helm-sync
+helm-sync: manifests ## Sync generated CRDs and manager ClusterRole into the Helm chart.
+	./hack/sync-helm-chart.sh
+
 ##@ Deployment
 
 ifndef ignore-not-found

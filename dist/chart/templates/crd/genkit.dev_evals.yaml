@@ -1,0 +1,273 @@
+{{- if .Values.crd.enable }}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+    {{- if .Values.crd.keep }}
+    "helm.sh/resource-policy": keep
+    {{- end }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+  name: evals.genkit.dev
+spec:
+  group: genkit.dev
+  names:
+    kind: Eval
+    listKind: EvalList
+    plural: evals
+    shortNames:
+    - gev
+    singular: eval
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.flowRef.name
+      name: Flow
+      type: string
+    - jsonPath: .spec.datasetRef.name
+      name: Dataset
+      type: string
+    - jsonPath: .spec.schedule
+      name: Schedule
+      type: string
+    - jsonPath: .status.activeJob
+      name: Active
+      type: string
+    - jsonPath: .status.lastRunTime
+      name: LastRun
+      type: date
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Eval is the Schema for the evals API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              EvalSpec defines the desired state of Eval.
+
+              An Eval runs a Flow against a Dataset using one or more named metrics.
+              If Schedule is set the operator reconciles a CronJob; otherwise it
+              reconciles a one-shot Job. Result parsing is delegated to the runner
+              image and surfaced in Status.LastRunResult.
+            properties:
+              concurrency:
+                default: 1
+                description: Concurrency is the parallelism for the eval Job.
+                format: int32
+                minimum: 1
+                type: integer
+              datasetRef:
+                description: DatasetRef references the Dataset to evaluate against.
+                properties:
+                  name:
+                    default: ""
+                    description: |-
+                      Name of the referent.
+                      This field is effectively required, but due to backwards compatibility is
+                      allowed to be empty. Instances of this type with an empty value here are
+                      almost certainly wrong.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
+              flowRef:
+                description: FlowRef references the Flow under test.
+                properties:
+                  name:
+                    default: ""
+                    description: |-
+                      Name of the referent.
+                      This field is effectively required, but due to backwards compatibility is
+                      allowed to be empty. Instances of this type with an empty value here are
+                      almost certainly wrong.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
+              metrics:
+                description: |-
+                  Metrics are evaluator names passed through to genkit-go's evaluator
+                  registry (e.g. "faithfulness", "answer_relevancy", "correctness").
+                items:
+                  type: string
+                minItems: 1
+                type: array
+              outputSink:
+                description: |-
+                  OutputSink describes where results are written. Exactly one of
+                  configMap or s3 must be set.
+                properties:
+                  configMap:
+                    description: ConfigMap writes the result back into a ConfigMap
+                      in-cluster.
+                    properties:
+                      key:
+                        description: Key is the ConfigMap data key to write the JSON
+                          result into.
+                        type: string
+                      name:
+                        description: Name is the ConfigMap name in the same namespace.
+                        type: string
+                    required:
+                    - key
+                    - name
+                    type: object
+                  s3:
+                    description: S3 writes the result as a JSON object to S3.
+                    properties:
+                      bucket:
+                        description: Bucket is the destination bucket.
+                        type: string
+                      credentialsRef:
+                        description: |-
+                          CredentialsRef is a Secret in the same namespace containing AWS
+                          credentials exposed to the eval runner via envFrom.
+                        properties:
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      prefix:
+                        description: Prefix is an optional key prefix for output objects.
+                        type: string
+                    required:
+                    - bucket
+                    - credentialsRef
+                    type: object
+                type: object
+              runnerImage:
+                description: |-
+                  RunnerImage is the container image of a Genkit eval runner that
+                  reads the mount contract and writes results to the output sink.
+                minLength: 1
+                type: string
+              schedule:
+                description: |-
+                  Schedule is an optional cron expression. When set, the Eval is
+                  reconciled to a CronJob; otherwise a one-shot Job.
+                type: string
+            required:
+            - datasetRef
+            - flowRef
+            - metrics
+            - outputSink
+            - runnerImage
+            type: object
+          status:
+            description: EvalStatus defines the observed state of Eval.
+            properties:
+              activeJob:
+                description: ActiveJob is the name of the currently-running Job, if
+                  any.
+                type: string
+              conditions:
+                description: Conditions reflect the current state of the Eval.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              lastRunResult:
+                description: LastRunResult is the parsed metric summary of the most
+                  recent run.
+                x-kubernetes-preserve-unknown-fields: true
+              lastRunTime:
+                description: LastRunTime is when the most recent Job completed.
+                format: date-time
+                type: string
+              observedGeneration:
+                description: ObservedGeneration is the generation reflected by the
+                  current status.
+                format: int64
+                type: integer
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+{{- end }}

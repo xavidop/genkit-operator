@@ -4,7 +4,7 @@ metadata:
   name: greeter
   namespace: default
 spec:
-  image: genkit-runner:dev
+  image: ghcr.io/xavidop/genkit-runner:latest
   replicas: 1
   port: 8080
   modelRef:

@@ -5,7 +5,7 @@ metadata:
   namespace: default
 spec:
   # Pod-level configuration shared by every flow in this set.
-  image: genkit-runner:dev
+  image: ghcr.io/xavidop/genkit-runner:latest
   imagePullPolicy: IfNotPresent
   replicas: 1
   port: 8080

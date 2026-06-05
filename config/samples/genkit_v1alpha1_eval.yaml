@@ -13,7 +13,7 @@ spec:
     - correctness
   schedule: "0 2 * * *"
   concurrency: 2
-  runnerImage: genkit-runner:dev
+  runnerImage: ghcr.io/xavidop/genkit-runner:latest
   outputSink:
     configMap:
       name: greeter-nightly-results

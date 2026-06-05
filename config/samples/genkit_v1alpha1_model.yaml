@@ -5,11 +5,11 @@ metadata:
   namespace: default
 spec:
   provider: anthropic
-  model: claude-opus-4-6
+  model: claude-opus-4-7
   pluginConfigRef:
     name: anthropic
   info:
-    label: Anthropic - Claude Opus 4.6
+    label: Anthropic - Claude Opus 4.7
     stage: featured
     supports:
       multiturn: true

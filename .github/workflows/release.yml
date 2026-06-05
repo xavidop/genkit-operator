@@ -216,6 +216,7 @@ jobs:
           TAG: ${{ needs.release.outputs.tag }}
         run: |
           set -euo pipefail
+          make helm-sync
           chart=dist/chart
           sed -i -E "s/^version: .*/version: ${VERSION}/" "${chart}/Chart.yaml"
           sed -i -E "s/^appVersion: .*/appVersion: \"${VERSION}\"/" "${chart}/Chart.yaml"
