@@ -1,3 +1,9 @@
+## [0.4.0](https://github.com/xavidop/genkit-operator/compare/v0.3.0...v0.4.0) (2026-06-05)
+
+### Features
+
+* fixing installation ([159d96d](https://github.com/xavidop/genkit-operator/commit/159d96dccaf7e7bebd2033cd4fd82be93cf2a5ad))
+
 ## [0.3.0](https://github.com/xavidop/genkit-operator/compare/v0.2.3...v0.3.0) (2026-06-02)
 
 ### Features
