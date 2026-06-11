@@ -30,7 +30,8 @@ import (
 
 // makeReadyPluginConfig creates a PluginConfig + Secret pair and reconciles
 // it so the resulting object has Ready=True.
-func makeReadyPluginConfig(ns, name string) *genkitv1alpha1.PluginConfig {
+func makeReadyPluginConfig(name string) *genkitv1alpha1.PluginConfig {
+	const ns = "default"
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: name + "-secret", Namespace: ns},
 		StringData: map[string]string{"ANTHROPIC_API_KEY": "x"},
@@ -85,7 +86,7 @@ var _ = Describe("Model Controller", func() {
 
 	It("is Ready when its PluginConfig is Ready", func() {
 		name := uniqueName("model-ok")
-		pc := makeReadyPluginConfig(ns, name+"-pc")
+		pc := makeReadyPluginConfig(name + "-pc")
 
 		m := &genkitv1alpha1.Model{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},

@@ -174,7 +174,7 @@ var _ = Describe("FlowSet Controller", func() {
 		// one flow uses a ref, the other uses inline model + inline prompt
 		m := makeReadyModel(name + "-model")
 		pa := makeReadyPrompt(name+"-pa", "---\nmodel: x\n---\nhola")
-		pc := makeReadyPluginConfig(ns, name+"-inline-pc")
+		pc := makeReadyPluginConfig(name + "-inline-pc")
 
 		inlineContent := "---\nmodel: x\n---\nhello inline"
 

@@ -32,7 +32,7 @@ import (
 // makeReadyModel creates a Ready Model (with backing PluginConfig + Secret).
 func makeReadyModel(name string) *genkitv1alpha1.Model {
 	const ns = "default"
-	pc := makeReadyPluginConfig(ns, name+"-pc")
+	pc := makeReadyPluginConfig(name + "-pc")
 	m := &genkitv1alpha1.Model{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
 		Spec: genkitv1alpha1.ModelSpec{
@@ -205,7 +205,7 @@ var _ = Describe("Flow Controller", func() {
 	It("renders config.json using inline modelSpec (no Model CR needed)", func() {
 		name := uniqueName("flow-inline-model")
 		// Create a PluginConfig + Secret (but no Model CR)
-		pc := makeReadyPluginConfig(ns, name+"-pc")
+		pc := makeReadyPluginConfig(name + "-pc")
 		p := makeReadyPrompt(name+"-prompt", "---\nmodel: x\n---\nhi")
 
 		flow := &genkitv1alpha1.Flow{
