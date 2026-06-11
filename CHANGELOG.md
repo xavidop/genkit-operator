@@ -1,3 +1,9 @@
+## [0.4.1](https://github.com/xavidop/genkit-operator/compare/v0.4.0...v0.4.1) (2026-06-05)
+
+### Bug Fixes
+
+* release and read from secrets ([fab9aca](https://github.com/xavidop/genkit-operator/commit/fab9aca76e41a69ce39bb1cff3add2b08c642818))
+
 ## [0.4.0](https://github.com/xavidop/genkit-operator/compare/v0.3.0...v0.4.0) (2026-06-05)
 
 ### Features
