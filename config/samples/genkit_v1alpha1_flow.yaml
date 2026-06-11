@@ -7,17 +7,33 @@ spec:
   image: ghcr.io/xavidop/genkit-runner:latest
   replicas: 1
   port: 8080
-  modelRef:
-    name: claude-opus-47
+  # Option A: inline model spec (no Model CR required)
+  modelSpec:
+    provider: anthropic
+    model: claude-opus-4-7
+    pluginConfigRef:
+      name: anthropic-config
+    defaultConfig:
+      temperature: 0.3
+      maxOutputTokens: 1024
+  # Option B: reference to a Model CR (comment out modelSpec and uncomment this)
+  # modelRef:
+  #   name: my-model
   prompts:
-    - name: greeting
-  tools:
-    - name: weather-lookup
+    # Option A: inline prompt (no Prompt CR required)
+    - prompt:
+        name: greeting
+        content: |
+          ---
+          model: anthropic/claude-opus-4-7
+          config:
+            max_tokens: 256
+          input:
+            schema:
+              name: string
+          ---
+          You are a friendly assistant. Greet {{name}} in one short sentence.
+    # Option B: reference to a Prompt CR (comment out the prompt block and uncomment this)
+    # - promptRef:
+    #     name: greeting
   serviceType: ClusterIP
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
