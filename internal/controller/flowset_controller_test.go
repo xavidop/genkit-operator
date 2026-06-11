@@ -168,6 +168,74 @@ var _ = Describe("FlowSet Controller", func() {
 		err = k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name + "-beta-prompts"}, &cm)
 		Expect(apierrors.IsNotFound(err)).To(BeTrue())
 	})
+
+	It("renders per-flow ConfigMaps using inline modelSpec and inline prompt", func() {
+		name := uniqueName("fs-inline")
+		// one flow uses a ref, the other uses inline model + inline prompt
+		m := makeReadyModel(name + "-model")
+		pa := makeReadyPrompt(name+"-pa", "---\nmodel: x\n---\nhola")
+		pc := makeReadyPluginConfig(ns, name+"-inline-pc")
+
+		inlineContent := "---\nmodel: x\n---\nhello inline"
+
+		fs := &genkitv1alpha1.FlowSet{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+			Spec: genkitv1alpha1.FlowSetSpec{
+				Image:    "ghcr.io/example/runner:1",
+				Replicas: ptr.To[int32](1),
+				Flows: []genkitv1alpha1.FlowSetFlow{
+					{
+						Name:     "ref-flow",
+						ModelRef: &corev1.LocalObjectReference{Name: m.Name},
+						Prompts:  []genkitv1alpha1.PromptSource{{PromptRef: &corev1.LocalObjectReference{Name: pa.Name}}},
+					},
+					{
+						Name: "inline-flow",
+						ModelSpec: &genkitv1alpha1.InlineModelSpec{
+							Provider:        pc.Spec.Type,
+							Model:           "claude-opus-4-7",
+							PluginConfigRef: corev1.LocalObjectReference{Name: pc.Name},
+						},
+						Prompts: []genkitv1alpha1.PromptSource{
+							{Prompt: &genkitv1alpha1.InlinePrompt{
+								Name:    "greeting",
+								Content: inlineContent,
+							}},
+						},
+					},
+				},
+			},
+		}
+		Expect(k8sClient.Create(ctx, fs)).To(Succeed())
+		DeferCleanup(func() { _ = k8sClient.Delete(ctx, fs) })
+
+		r := &FlowSetReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
+		_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: name}})
+		Expect(err).NotTo(HaveOccurred())
+
+		// Deployment and Service must exist.
+		var dep appsv1.Deployment
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, &dep)).To(Succeed())
+		Expect(dep.Spec.Template.Annotations).To(HaveKey(genkitv1alpha1.AnnotationContentHash))
+		var svc corev1.Service
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, &svc)).To(Succeed())
+
+		// ref-flow: prompt from CR.
+		var cmRefPrompts corev1.ConfigMap
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name + "-ref-flow-prompts"}, &cmRefPrompts)).To(Succeed())
+		Expect(cmRefPrompts.Data).To(HaveKey(pa.Name + ".prompt"))
+
+		// inline-flow: prompt from inline content.
+		var cmInlinePrompts corev1.ConfigMap
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name + "-inline-flow-prompts"}, &cmInlinePrompts)).To(Succeed())
+		Expect(cmInlinePrompts.Data).To(HaveKey("greeting.prompt"))
+		Expect(cmInlinePrompts.Data["greeting.prompt"]).To(Equal(inlineContent))
+
+		// inline-flow config: must reference inline model.
+		var cmInlineCfg corev1.ConfigMap
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name + "-inline-flow-config"}, &cmInlineCfg)).To(Succeed())
+		Expect(cmInlineCfg.Data["config.json"]).To(ContainSubstring(`"claude-opus-4-7"`))
+	})
 })
 
 // conditionStatus is a tiny helper for the tests above.
