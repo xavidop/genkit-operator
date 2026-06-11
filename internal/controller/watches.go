@@ -290,9 +290,6 @@ func flowsReferencingPluginConfig(ctx context.Context, c client.Client, namespac
 			modelNames[m.Name] = struct{}{}
 		}
 	}
-	if len(modelNames) == 0 {
-		return nil
-	}
 	var flows genkitv1alpha1.FlowList
 	if err := c.List(ctx, &flows, client.InNamespace(namespace)); err != nil {
 		return nil
