@@ -12,7 +12,7 @@ spec:
     provider: anthropic
     model: claude-opus-4-7
     pluginConfigRef:
-      name: anthropic-config
+      name: anthropic
     defaultConfig:
       temperature: 0.3
       maxOutputTokens: 1024
