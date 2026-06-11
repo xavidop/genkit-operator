@@ -204,7 +204,6 @@ var _ = Describe("Flow Controller", func() {
 
 	It("renders config.json using inline modelSpec (no Model CR needed)", func() {
 		name := uniqueName("flow-inline-model")
-		const ns = "default"
 		// Create a PluginConfig + Secret (but no Model CR)
 		pc := makeReadyPluginConfig(ns, name+"-pc")
 		p := makeReadyPrompt(name+"-prompt", "---\nmodel: x\n---\nhi")
@@ -234,17 +233,21 @@ var _ = Describe("Flow Controller", func() {
 		var dep appsv1.Deployment
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, &dep)).To(Succeed())
 		Expect(dep.Spec.Template.Annotations).To(HaveKey(genkitv1alpha1.AnnotationContentHash))
+		var svc corev1.Service
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, &svc)).To(Succeed())
 
 		// config.json ConfigMap must exist and contain the inline model and plugin type.
 		var cfgCM corev1.ConfigMap
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name + "-config"}, &cfgCM)).To(Succeed())
-		Expect(cfgCM.Data["config.json"]).To(ContainSubstring(`"defaultModel"`))
 		Expect(cfgCM.Data["config.json"]).To(ContainSubstring(`"claude-opus-4-7"`))
+
+		var promptsCM corev1.ConfigMap
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name + "-prompts"}, &promptsCM)).To(Succeed())
+		Expect(promptsCM.Data).To(HaveKey(p.Name + ".prompt"))
 	})
 
 	It("mounts inline prompt content without a Prompt CR", func() {
 		name := uniqueName("flow-inline-prompt")
-		const ns = "default"
 		m := makeReadyModel(name + "-model")
 
 		inlineContent := "---\nmodel: x\n---\nHello inline"
@@ -268,6 +271,13 @@ var _ = Describe("Flow Controller", func() {
 		r := &FlowReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
 		_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: name}})
 		Expect(err).NotTo(HaveOccurred())
+
+		// Deployment and Service must exist.
+		var dep appsv1.Deployment
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, &dep)).To(Succeed())
+		Expect(dep.Spec.Template.Annotations).To(HaveKey(genkitv1alpha1.AnnotationContentHash))
+		var svc corev1.Service
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, &svc)).To(Succeed())
 
 		// Prompts ConfigMap must have the inline content mounted as greeting.prompt
 		var cm corev1.ConfigMap
