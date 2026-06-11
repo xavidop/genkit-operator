@@ -35,22 +35,27 @@ type FlowSetFlow struct {
 	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
 	Name string `json:"name"`
 
-	// Prompts is the list of Prompt CRs available to this flow. The FIRST
-	// item is the entrypoint invoked by POST /<name>; the rest are helpers
-	// loaded into the same per-flow genkit registry.
+	// Prompts is the list of prompts available to this flow. The FIRST item
+	// is the entrypoint invoked by POST /<name>; the rest are helpers loaded
+	// into the same per-flow genkit registry. Each entry is either a
+	// promptRef (reference to a Prompt CR) or an inline prompt declaration.
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1
-	Prompts []corev1.LocalObjectReference `json:"prompts"`
+	Prompts []PromptSource `json:"prompts"`
 
 	// Tools is the list of Tool CRs exposed to this flow.
 	// +optional
 	Tools []corev1.LocalObjectReference `json:"tools,omitempty"`
 
-	// ModelRef is the default Model for this flow. Required: each flow
-	// must declare its own model (which transitively names a PluginConfig
-	// and therefore a credential Secret).
-	// +kubebuilder:validation:Required
-	ModelRef corev1.LocalObjectReference `json:"modelRef"`
+	// ModelRef references an existing Model CR as the default model for this
+	// flow. Mutually exclusive with modelSpec; exactly one must be set.
+	// +optional
+	ModelRef *corev1.LocalObjectReference `json:"modelRef,omitempty"`
+
+	// ModelSpec declares the model configuration inline without creating a
+	// Model CR. Mutually exclusive with modelRef; exactly one must be set.
+	// +optional
+	ModelSpec *InlineModelSpec `json:"modelSpec,omitempty"`
 }
 
 // FlowSetSpec defines the desired state of FlowSet.
