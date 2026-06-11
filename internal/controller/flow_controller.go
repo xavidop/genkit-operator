@@ -136,16 +136,28 @@ func (r *FlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 // Returns an error string suitable for the Ready condition message.
 func (r *FlowReconciler) resolveDeps(ctx context.Context, flow *genkitv1alpha1.Flow) (*resolvedDeps, error) {
 	out := &resolvedDeps{}
-	for _, ref := range flow.Spec.Prompts {
-		var p genkitv1alpha1.Prompt
-		if err := r.Get(ctx, types.NamespacedName{Namespace: flow.Namespace, Name: ref.Name}, &p); err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil, fmt.Errorf("prompt %q not found", ref.Name)
+
+	for _, ps := range flow.Spec.Prompts {
+		switch {
+		case ps.PromptRef != nil:
+			var p genkitv1alpha1.Prompt
+			if err := r.Get(ctx, types.NamespacedName{Namespace: flow.Namespace, Name: ps.PromptRef.Name}, &p); err != nil {
+				if apierrors.IsNotFound(err) {
+					return nil, fmt.Errorf("prompt %q not found", ps.PromptRef.Name)
+				}
+				return nil, err
 			}
-			return nil, err
+			out.prompts = append(out.prompts, p)
+		case ps.Prompt != nil:
+			out.prompts = append(out.prompts, genkitv1alpha1.Prompt{
+				ObjectMeta: metav1.ObjectMeta{Name: ps.Prompt.Name},
+				Spec:       genkitv1alpha1.PromptSpec{Content: ps.Prompt.Content},
+			})
+		default:
+			return nil, fmt.Errorf("prompt source has neither promptRef nor prompt set")
 		}
-		out.prompts = append(out.prompts, p)
 	}
+
 	for _, ref := range flow.Spec.Tools {
 		var t genkitv1alpha1.Tool
 		if err := r.Get(ctx, types.NamespacedName{Namespace: flow.Namespace, Name: ref.Name}, &t); err != nil {
@@ -156,7 +168,11 @@ func (r *FlowReconciler) resolveDeps(ctx context.Context, flow *genkitv1alpha1.F
 		}
 		out.tools = append(out.tools, t)
 	}
-	if flow.Spec.ModelRef != nil && flow.Spec.ModelRef.Name != "" {
+
+	switch {
+	case flow.Spec.ModelRef != nil && flow.Spec.ModelSpec != nil:
+		return nil, fmt.Errorf("modelRef and modelSpec are mutually exclusive")
+	case flow.Spec.ModelRef != nil:
 		var m genkitv1alpha1.Model
 		if err := r.Get(ctx, types.NamespacedName{Namespace: flow.Namespace, Name: flow.Spec.ModelRef.Name}, &m); err != nil {
 			if apierrors.IsNotFound(err) {
@@ -181,7 +197,34 @@ func (r *FlowReconciler) resolveDeps(ctx context.Context, flow *genkitv1alpha1.F
 			return nil, err
 		}
 		out.secret = &secret
+	case flow.Spec.ModelSpec != nil:
+		out.model = &genkitv1alpha1.Model{
+			Spec: genkitv1alpha1.ModelSpec{
+				Provider:        flow.Spec.ModelSpec.Provider,
+				Model:           flow.Spec.ModelSpec.Model,
+				PluginConfigRef: flow.Spec.ModelSpec.PluginConfigRef,
+				Info:            flow.Spec.ModelSpec.Info,
+				DefaultConfig:   flow.Spec.ModelSpec.DefaultConfig,
+			},
+		}
+		var pc genkitv1alpha1.PluginConfig
+		if err := r.Get(ctx, types.NamespacedName{Namespace: flow.Namespace, Name: flow.Spec.ModelSpec.PluginConfigRef.Name}, &pc); err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil, fmt.Errorf("pluginconfig %q not found (referenced by inline modelSpec)", flow.Spec.ModelSpec.PluginConfigRef.Name)
+			}
+			return nil, err
+		}
+		out.plugin = &pc
+		var secret corev1.Secret
+		if err := r.Get(ctx, types.NamespacedName{Namespace: flow.Namespace, Name: pc.Spec.CredentialsRef.Name}, &secret); err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil, fmt.Errorf("secret %q not found (referenced by pluginconfig %q)", pc.Spec.CredentialsRef.Name, pc.Name)
+			}
+			return nil, err
+		}
+		out.secret = &secret
 	}
+
 	return out, nil
 }
 

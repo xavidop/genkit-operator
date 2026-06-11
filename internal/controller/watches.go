@@ -171,7 +171,7 @@ func flowReferences(f *genkitv1alpha1.Flow, kind, name string) bool {
 	switch kind {
 	case "Prompt":
 		for _, p := range f.Spec.Prompts {
-			if p.Name == name {
+			if p.GetName() == name {
 				return true
 			}
 		}
