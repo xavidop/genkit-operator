@@ -1,3 +1,24 @@
+## [0.5.0](https://github.com/xavidop/genkit-operator/compare/v0.4.1...v0.5.0) (2026-06-11)
+
+### Features
+
+* add shared_types.go with InlineModelSpec, InlinePrompt, and PromptSource ([576f460](https://github.com/xavidop/genkit-operator/commit/576f460e90f3f32124e0b7111ba8de601ba4d0d0))
+* **api:** update FlowSpec with PromptSource and InlineModelSpec fields ([12f839f](https://github.com/xavidop/genkit-operator/commit/12f839f1e80dd5c42011af37d8d2b91290929895))
+* handle inline prompts and inline model in FlowReconciler ([b93e748](https://github.com/xavidop/genkit-operator/commit/b93e7487ca6c325bd5e9fe8b391087a373bdbbc6))
+* inline model spec and prompts for Flow and FlowSet ([b830502](https://github.com/xavidop/genkit-operator/commit/b830502b98cc921efeba68f376a69256b7cafaaa))
+* update flowset controller and watches for PromptSource/pointer ModelRef ([2084af6](https://github.com/xavidop/genkit-operator/commit/2084af678a3f2d0d474ed1a8587c593851590b98))
+* update FlowSetFlow to use PromptSource and optional model fields ([288d426](https://github.com/xavidop/genkit-operator/commit/288d426c10bd8cf558b47c23f0ee0b70b1a3f745))
+* update samples to show inline model and prompt options ([0fcf95e](https://github.com/xavidop/genkit-operator/commit/0fcf95ee742e3957ee496841580a2b97a9396eea))
+
+### Bug Fixes
+
+* **controller:** remove early-return bug in flowsReferencingPluginConfig for inline modelSpec flows ([0f65c7f](https://github.com/xavidop/genkit-operator/commit/0f65c7f6936031a661ebefdea853da82a16408f5))
+* **controller:** watch PluginConfig changes for inline modelSpec flows ([7617811](https://github.com/xavidop/genkit-operator/commit/7617811b1f066e523724b9d09e59f1e8681f75c4))
+* correct pluginConfigRef name in flow sample to match pluginconfig sample ([0ec2655](https://github.com/xavidop/genkit-operator/commit/0ec265574ee392d9dfd2f47e4b75db1a29377e18))
+* lint ([3da937e](https://github.com/xavidop/genkit-operator/commit/3da937eae4e28cedbb3f9e99e3c1e11b0f79f905))
+* update helm chart ([02186df](https://github.com/xavidop/genkit-operator/commit/02186df21aa9ed15e193792c19c740b9b800cb67))
+* use Chainguard static base image and set imagePullPolicy for kind ([c1b5261](https://github.com/xavidop/genkit-operator/commit/c1b52618ad9d5cf5669b5048ccbc8cff0c66a898))
+
 ## [0.4.1](https://github.com/xavidop/genkit-operator/compare/v0.4.0...v0.4.1) (2026-06-05)
 
 ### Bug Fixes
