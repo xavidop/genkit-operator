@@ -237,7 +237,9 @@ spec:
                 - Never
                 type: string
               modelRef:
-                description: ModelRef is the default Model for this Flow.
+                description: |-
+                  ModelRef references an existing Model CR as the default model for this Flow.
+                  Mutually exclusive with modelSpec; at most one may be set.
                 properties:
                   name:
                     default: ""
@@ -250,6 +252,47 @@ spec:
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
+              modelSpec:
+                description: |-
+                  ModelSpec declares the model configuration inline without creating a
+                  Model CR. Mutually exclusive with modelRef; at most one may be set.
+                properties:
+                  defaultConfig:
+                    description: DefaultConfig mirrors genkit-go ai.GenerationCommonConfig.
+                      Schemaless.
+                    x-kubernetes-preserve-unknown-fields: true
+                  info:
+                    description: Info mirrors genkit-go ai.ModelInfo. Schemaless —
+                      passed as-is to the runtime.
+                    x-kubernetes-preserve-unknown-fields: true
+                  model:
+                    description: Model is the provider model identifier (e.g. "claude-opus-4-7").
+                    minLength: 1
+                    type: string
+                  pluginConfigRef:
+                    description: PluginConfigRef references the PluginConfig that
+                      supplies credentials.
+                    properties:
+                      name:
+                        default: ""
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  provider:
+                    description: Provider is the plugin type (e.g. "anthropic", "googleai").
+                    minLength: 1
+                    type: string
+                required:
+                - model
+                - pluginConfigRef
+                - provider
+                type: object
               port:
                 default: 8080
                 description: Port is the container port the runtime listens on.
@@ -258,23 +301,47 @@ spec:
                 minimum: 1
                 type: integer
               prompts:
-                description: Prompts is the list of Prompt CRs to mount under /genkit/prompts.
+                description: |-
+                  Prompts is the list of prompts to mount under /genkit/prompts. Each
+                  entry is either a promptRef (reference to a Prompt CR) or an inline
+                  prompt declaration. Exactly one of the two fields must be set per entry.
                 items:
                   description: |-
-                    LocalObjectReference contains enough information to let you locate the
-                    referenced object inside the same namespace.
+                    PromptSource is one entry in a Flow or FlowSet prompts list.
+                    Exactly one of promptRef or prompt must be set.
                   properties:
-                    name:
-                      default: ""
-                      description: |-
-                        Name of the referent.
-                        This field is effectively required, but due to backwards compatibility is
-                        allowed to be empty. Instances of this type with an empty value here are
-                        almost certainly wrong.
-                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                      type: string
+                    prompt:
+                      description: Prompt declares the prompt content inline (no Prompt
+                        CR required).
+                      properties:
+                        content:
+                          description: Content is the full dotprompt source (YAML
+                            frontmatter + Handlebars body).
+                          minLength: 1
+                          type: string
+                        name:
+                          description: 'Name is used as the prompt filename: <name>.prompt.'
+                          minLength: 1
+                          type: string
+                      required:
+                      - content
+                      - name
+                      type: object
+                    promptRef:
+                      description: PromptRef references an existing Prompt CR by name.
+                      properties:
+                        name:
+                          default: ""
+                          description: |-
+                            Name of the referent.
+                            This field is effectively required, but due to backwards compatibility is
+                            allowed to be empty. Instances of this type with an empty value here are
+                            almost certainly wrong.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          type: string
+                      type: object
+                      x-kubernetes-map-type: atomic
                   type: object
-                  x-kubernetes-map-type: atomic
                 type: array
               replicas:
                 default: 1

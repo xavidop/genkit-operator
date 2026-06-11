@@ -32,7 +32,7 @@ import (
 // makeReadyModel creates a Ready Model (with backing PluginConfig + Secret).
 func makeReadyModel(name string) *genkitv1alpha1.Model {
 	const ns = "default"
-	pc := makeReadyPluginConfig(ns, name+"-pc")
+	pc := makeReadyPluginConfig(name + "-pc")
 	m := &genkitv1alpha1.Model{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
 		Spec: genkitv1alpha1.ModelSpec{
@@ -85,7 +85,7 @@ var _ = Describe("Flow Controller", func() {
 			Spec: genkitv1alpha1.FlowSpec{
 				Image:    "ghcr.io/example/flow:1",
 				ModelRef: &corev1.LocalObjectReference{Name: m.Name},
-				Prompts:  []corev1.LocalObjectReference{{Name: p.Name}},
+				Prompts:  []genkitv1alpha1.PromptSource{{PromptRef: &corev1.LocalObjectReference{Name: p.Name}}},
 			},
 		}
 		Expect(k8sClient.Create(ctx, flow)).To(Succeed())
@@ -111,7 +111,7 @@ var _ = Describe("Flow Controller", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
 			Spec: genkitv1alpha1.FlowSpec{
 				Image:   "ghcr.io/example/flow:1",
-				Prompts: []corev1.LocalObjectReference{{Name: "nope"}},
+				Prompts: []genkitv1alpha1.PromptSource{{PromptRef: &corev1.LocalObjectReference{Name: "nope"}}},
 			},
 		}
 		Expect(k8sClient.Create(ctx, flow)).To(Succeed())
@@ -134,7 +134,7 @@ var _ = Describe("Flow Controller", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
 			Spec: genkitv1alpha1.FlowSpec{
 				Image:   "ghcr.io/example/flow:1",
-				Prompts: []corev1.LocalObjectReference{{Name: p.Name}},
+				Prompts: []genkitv1alpha1.PromptSource{{PromptRef: &corev1.LocalObjectReference{Name: p.Name}}},
 			},
 		}
 		Expect(k8sClient.Create(ctx, flow)).To(Succeed())
@@ -172,7 +172,7 @@ var _ = Describe("Flow Controller", func() {
 			Spec: genkitv1alpha1.FlowSpec{
 				Image:    "ghcr.io/example/flow:1",
 				ModelRef: &corev1.LocalObjectReference{Name: m.Name},
-				Prompts:  []corev1.LocalObjectReference{{Name: p.Name}},
+				Prompts:  []genkitv1alpha1.PromptSource{{PromptRef: &corev1.LocalObjectReference{Name: p.Name}}},
 			},
 		}
 		Expect(k8sClient.Create(ctx, flow)).To(Succeed())
@@ -200,5 +200,89 @@ var _ = Describe("Flow Controller", func() {
 		got2 := &genkitv1alpha1.Flow{}
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, got2)).To(Succeed())
 		Expect(got2.Status.ContentHash).NotTo(Equal(hash1))
+	})
+
+	It("renders config.json using inline modelSpec (no Model CR needed)", func() {
+		name := uniqueName("flow-inline-model")
+		// Create a PluginConfig + Secret (but no Model CR)
+		pc := makeReadyPluginConfig(name + "-pc")
+		p := makeReadyPrompt(name+"-prompt", "---\nmodel: x\n---\nhi")
+
+		flow := &genkitv1alpha1.Flow{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+			Spec: genkitv1alpha1.FlowSpec{
+				Image: "ghcr.io/example/flow:1",
+				ModelSpec: &genkitv1alpha1.InlineModelSpec{
+					Provider:        pc.Spec.Type,
+					Model:           "claude-opus-4-7",
+					PluginConfigRef: corev1.LocalObjectReference{Name: pc.Name},
+				},
+				Prompts: []genkitv1alpha1.PromptSource{
+					{PromptRef: &corev1.LocalObjectReference{Name: p.Name}},
+				},
+			},
+		}
+		Expect(k8sClient.Create(ctx, flow)).To(Succeed())
+		DeferCleanup(func() { _ = k8sClient.Delete(ctx, flow) })
+
+		r := &FlowReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
+		_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: name}})
+		Expect(err).NotTo(HaveOccurred())
+
+		// Deployment must exist and have the content hash annotation.
+		var dep appsv1.Deployment
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, &dep)).To(Succeed())
+		Expect(dep.Spec.Template.Annotations).To(HaveKey(genkitv1alpha1.AnnotationContentHash))
+		var svc corev1.Service
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, &svc)).To(Succeed())
+
+		// config.json ConfigMap must exist and contain the inline model and plugin type.
+		var cfgCM corev1.ConfigMap
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name + "-config"}, &cfgCM)).To(Succeed())
+		Expect(cfgCM.Data["config.json"]).To(ContainSubstring(`"claude-opus-4-7"`))
+
+		var promptsCM corev1.ConfigMap
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name + "-prompts"}, &promptsCM)).To(Succeed())
+		Expect(promptsCM.Data).To(HaveKey(p.Name + ".prompt"))
+	})
+
+	It("mounts inline prompt content without a Prompt CR", func() {
+		name := uniqueName("flow-inline-prompt")
+		m := makeReadyModel(name + "-model")
+
+		inlineContent := "---\nmodel: x\n---\nHello inline"
+
+		flow := &genkitv1alpha1.Flow{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+			Spec: genkitv1alpha1.FlowSpec{
+				Image:    "ghcr.io/example/flow:1",
+				ModelRef: &corev1.LocalObjectReference{Name: m.Name},
+				Prompts: []genkitv1alpha1.PromptSource{
+					{Prompt: &genkitv1alpha1.InlinePrompt{
+						Name:    "greeting",
+						Content: inlineContent,
+					}},
+				},
+			},
+		}
+		Expect(k8sClient.Create(ctx, flow)).To(Succeed())
+		DeferCleanup(func() { _ = k8sClient.Delete(ctx, flow) })
+
+		r := &FlowReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
+		_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: name}})
+		Expect(err).NotTo(HaveOccurred())
+
+		// Deployment and Service must exist.
+		var dep appsv1.Deployment
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, &dep)).To(Succeed())
+		Expect(dep.Spec.Template.Annotations).To(HaveKey(genkitv1alpha1.AnnotationContentHash))
+		var svc corev1.Service
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, &svc)).To(Succeed())
+
+		// Prompts ConfigMap must have the inline content mounted as greeting.prompt
+		var cm corev1.ConfigMap
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name + "-prompts"}, &cm)).To(Succeed())
+		Expect(cm.Data).To(HaveKey("greeting.prompt"))
+		Expect(cm.Data["greeting.prompt"]).To(Equal(inlineContent))
 	})
 })

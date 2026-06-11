@@ -148,7 +148,7 @@ func flowSetReferences(fs *genkitv1alpha1.FlowSet, kind, name string) bool {
 		switch kind {
 		case "Prompt":
 			for _, p := range f.Prompts {
-				if p.Name == name {
+				if p.GetName() == name {
 					return true
 				}
 			}
@@ -159,7 +159,7 @@ func flowSetReferences(fs *genkitv1alpha1.FlowSet, kind, name string) bool {
 				}
 			}
 		case "Model":
-			if f.ModelRef.Name == name {
+			if f.ModelRef != nil && f.ModelRef.Name == name {
 				return true
 			}
 		}
@@ -171,7 +171,7 @@ func flowReferences(f *genkitv1alpha1.Flow, kind, name string) bool {
 	switch kind {
 	case "Prompt":
 		for _, p := range f.Spec.Prompts {
-			if p.Name == name {
+			if p.GetName() == name {
 				return true
 			}
 		}
@@ -290,31 +290,35 @@ func flowsReferencingPluginConfig(ctx context.Context, c client.Client, namespac
 			modelNames[m.Name] = struct{}{}
 		}
 	}
-	if len(modelNames) == 0 {
-		return nil
-	}
 	var flows genkitv1alpha1.FlowList
 	if err := c.List(ctx, &flows, client.InNamespace(namespace)); err != nil {
 		return nil
 	}
 	var out []reconcile.Request
 	for _, f := range flows.Items {
-		if f.Spec.ModelRef == nil {
-			continue
+		// Check via modelRef → Model → PluginConfig chain.
+		if f.Spec.ModelRef != nil {
+			if _, ok := modelNames[f.Spec.ModelRef.Name]; ok {
+				out = append(out, reconcile.Request{
+					NamespacedName: types.NamespacedName{Namespace: f.Namespace, Name: f.Name},
+				})
+				continue
+			}
 		}
-		if _, ok := modelNames[f.Spec.ModelRef.Name]; !ok {
-			continue
+		// Check via inline modelSpec.pluginConfigRef directly referencing the PluginConfig.
+		if f.Spec.ModelSpec != nil && f.Spec.ModelSpec.PluginConfigRef.Name == pcName {
+			out = append(out, reconcile.Request{
+				NamespacedName: types.NamespacedName{Namespace: f.Namespace, Name: f.Name},
+			})
 		}
-		out = append(out, reconcile.Request{
-			NamespacedName: types.NamespacedName{Namespace: f.Namespace, Name: f.Name},
-		})
 	}
 	return out
 }
 
 // flowSetsReferencingPluginConfig returns reconcile requests for every
 // FlowSet in the namespace where any flow's modelRef points at a Model
-// that references the given PluginConfig.
+// that references the given PluginConfig, or where an inline modelSpec
+// directly references the PluginConfig.
 func flowSetsReferencingPluginConfig(ctx context.Context, c client.Client, namespace, pcName string) []reconcile.Request {
 	var models genkitv1alpha1.ModelList
 	if err := c.List(ctx, &models, client.InNamespace(namespace)); err != nil {
@@ -326,22 +330,31 @@ func flowSetsReferencingPluginConfig(ctx context.Context, c client.Client, names
 			modelNames[m.Name] = struct{}{}
 		}
 	}
-	if len(modelNames) == 0 {
-		return nil
-	}
 	var sets genkitv1alpha1.FlowSetList
 	if err := c.List(ctx, &sets, client.InNamespace(namespace)); err != nil {
 		return nil
 	}
 	var out []reconcile.Request
 	for _, fs := range sets.Items {
+		matched := false
 		for _, f := range fs.Spec.Flows {
-			if _, ok := modelNames[f.ModelRef.Name]; ok {
-				out = append(out, reconcile.Request{
-					NamespacedName: types.NamespacedName{Namespace: fs.Namespace, Name: fs.Name},
-				})
+			// Check via modelRef → Model → PluginConfig chain.
+			if f.ModelRef != nil {
+				if _, ok := modelNames[f.ModelRef.Name]; ok {
+					matched = true
+					break
+				}
+			}
+			// Check via inline modelSpec.pluginConfigRef directly referencing the PluginConfig.
+			if f.ModelSpec != nil && f.ModelSpec.PluginConfigRef.Name == pcName {
+				matched = true
 				break
 			}
+		}
+		if matched {
+			out = append(out, reconcile.Request{
+				NamespacedName: types.NamespacedName{Namespace: fs.Namespace, Name: fs.Name},
+			})
 		}
 	}
 	return out

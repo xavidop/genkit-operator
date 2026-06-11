@@ -12,13 +12,20 @@ namespaced.
 Flow / FlowSet ── pluginConfigRef ──▶ PluginConfig ── credentialsRef ──▶ Secret
    │                                       ▲
    ├── modelRef ──▶ Model ─────────────────┘
+   ├── modelSpec (inline, pluginConfigRef still required)
    ├── promptRefs ──▶ Prompt(s)
+   ├── prompts[].prompt (inline)
    └── toolRefs ────▶ Tool(s)
 ```
 
 A `Flow` (or each entry in a `FlowSet`) ties one `Model` together with
 one or more `Prompt`s and (optionally) `Tool`s. The `Model` points at a
 `PluginConfig` which points at a `Secret`.
+
+You can also skip the `Model` CR entirely by embedding the model
+definition inline via `modelSpec`, and skip `Prompt` CRs by embedding
+prompt content directly via `prompts[].prompt`. The `PluginConfig` CR is
+still required when using `modelSpec` because it holds the credentials.
 
 ## PluginConfig
 
@@ -135,6 +142,66 @@ spec:
 Exposed at `POST /<flow-name>` on the Pod's port (default `8080`).
 Short name: `gfl`.
 
+### Inline model spec
+
+Instead of creating a `Model` CR and referencing it via `modelRef`, you
+can embed the model definition directly in the `Flow` using `modelSpec`.
+`modelRef` and `modelSpec` are **mutually exclusive** — use one or the
+other.
+
+```yaml
+spec:
+  modelSpec:
+    provider: anthropic
+    model: claude-opus-4-7
+    pluginConfigRef:
+      name: anthropic-config   # PluginConfig CR still required for credentials
+    info:                      # optional
+      label: "Anthropic — Claude Opus 4.7"
+      supports:
+        multiturn: true
+        tools: true
+        systemRole: true
+    defaultConfig:             # optional
+      temperature: 0.3
+      maxOutputTokens: 1024
+```
+
+| Field             | Required | Description                                                  |
+| ----------------- | -------- | ------------------------------------------------------------ |
+| `provider`        | Yes      | Provider identifier (e.g. `anthropic`, `openai`, `googleai`) |
+| `model`           | Yes      | Model name as recognised by the provider plugin              |
+| `pluginConfigRef` | Yes      | Reference to a `PluginConfig` CR that holds the credentials  |
+| `info`            | No       | Human-readable label and capability flags                    |
+| `defaultConfig`   | No       | Default generation parameters (`temperature`, etc.)          |
+
+### Inline prompts
+
+Instead of creating `Prompt` CRs and referencing them via `promptRefs`,
+you can embed prompt content directly in the `Flow` using the `prompts`
+list with a `prompt` entry. `promptRef` and `prompt` are mutually
+exclusive within a single list item.
+
+```yaml
+spec:
+  prompts:
+    - prompt:
+        name: greeting         # becomes greeting.prompt on disk
+        content: |
+          ---
+          model: anthropic/claude-opus-4-7
+          ---
+          Greet the user named {{name}} in a single sentence.
+```
+
+| Field     | Required | Description                                                        |
+| --------- | -------- | ------------------------------------------------------------------ |
+| `name`    | Yes      | Logical name; written as `<name>.prompt` in the runner's ConfigMap |
+| `content` | Yes      | Full Dotprompt document (YAML frontmatter + Handlebars body)       |
+
+You can mix styles — some items can use `promptRef` while others use
+`prompt` inline — within the same `prompts` list.
+
 ## FlowSet
 
 Multiple flows in one Pod. Each flow gets its own per-flow ConfigMaps
@@ -160,6 +227,52 @@ spec:
 ```
 
 Routes: `POST /greeter`, `POST /summarizer`. Short name: `gfs`.
+
+### Inline model spec and prompts in FlowSet
+
+Each flow entry inside `FlowSet.spec.flows` supports the same
+`modelSpec` and `prompts[].prompt` inline fields as a standalone `Flow`.
+This lets you define the entire FlowSet without creating any `Model` or
+`Prompt` CRs.
+
+```yaml
+spec:
+  flows:
+    - name: greeter
+      modelSpec:
+        provider: anthropic
+        model: claude-opus-4-7
+        pluginConfigRef:
+          name: anthropic-config
+        defaultConfig:
+          temperature: 0.3
+      prompts:
+        - prompt:
+            name: greeting
+            content: |
+              ---
+              model: anthropic/claude-opus-4-7
+              ---
+              Greet the user named {{name}} in a single sentence.
+    - name: summarizer
+      modelSpec:
+        provider: anthropic
+        model: claude-opus-4-7
+        pluginConfigRef:
+          name: anthropic-config
+      prompts:
+        - prompt:
+            name: summarize
+            content: |
+              ---
+              model: anthropic/claude-opus-4-7
+              ---
+              Summarize the following text in one paragraph: {{text}}
+```
+
+The same constraints apply as for `Flow`: `modelRef` and `modelSpec` are
+mutually exclusive per flow entry, and `promptRef` / `prompt` are
+mutually exclusive per list item.
 
 ## Dataset and Eval
 

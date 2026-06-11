@@ -70,17 +70,25 @@ type FlowSpec struct {
 	// +optional
 	Port *int32 `json:"port,omitempty"`
 
-	// Prompts is the list of Prompt CRs to mount under /genkit/prompts.
+	// Prompts is the list of prompts to mount under /genkit/prompts. Each
+	// entry is either a promptRef (reference to a Prompt CR) or an inline
+	// prompt declaration. Exactly one of the two fields must be set per entry.
 	// +optional
-	Prompts []corev1.LocalObjectReference `json:"prompts,omitempty"`
+	Prompts []PromptSource `json:"prompts,omitempty"`
 
 	// Tools is the list of Tool CRs to expose under /genkit/tools.
 	// +optional
 	Tools []corev1.LocalObjectReference `json:"tools,omitempty"`
 
-	// ModelRef is the default Model for this Flow.
+	// ModelRef references an existing Model CR as the default model for this Flow.
+	// Mutually exclusive with modelSpec; at most one may be set.
 	// +optional
 	ModelRef *corev1.LocalObjectReference `json:"modelRef,omitempty"`
+
+	// ModelSpec declares the model configuration inline without creating a
+	// Model CR. Mutually exclusive with modelRef; at most one may be set.
+	// +optional
+	ModelSpec *InlineModelSpec `json:"modelSpec,omitempty"`
 
 	// Env is appended to the container env list.
 	// +optional
