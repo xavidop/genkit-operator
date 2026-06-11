@@ -48,13 +48,13 @@ var _ = Describe("FlowSet Controller", func() {
 				Flows: []genkitv1alpha1.FlowSetFlow{
 					{
 						Name:     "alpha",
-						ModelRef: corev1.LocalObjectReference{Name: m.Name},
-						Prompts:  []corev1.LocalObjectReference{{Name: pa.Name}},
+						ModelRef: &corev1.LocalObjectReference{Name: m.Name},
+						Prompts:  []genkitv1alpha1.PromptSource{{PromptRef: &corev1.LocalObjectReference{Name: pa.Name}}},
 					},
 					{
 						Name:     "beta",
-						ModelRef: corev1.LocalObjectReference{Name: m.Name},
-						Prompts:  []corev1.LocalObjectReference{{Name: pb.Name}},
+						ModelRef: &corev1.LocalObjectReference{Name: m.Name},
+						Prompts:  []genkitv1alpha1.PromptSource{{PromptRef: &corev1.LocalObjectReference{Name: pb.Name}}},
 					},
 				},
 			},
@@ -108,8 +108,8 @@ var _ = Describe("FlowSet Controller", func() {
 				Flows: []genkitv1alpha1.FlowSetFlow{
 					{
 						Name:     "lone",
-						ModelRef: corev1.LocalObjectReference{Name: "nope"},
-						Prompts:  []corev1.LocalObjectReference{{Name: p.Name}},
+						ModelRef: &corev1.LocalObjectReference{Name: "nope"},
+						Prompts:  []genkitv1alpha1.PromptSource{{PromptRef: &corev1.LocalObjectReference{Name: p.Name}}},
 					},
 				},
 			},
@@ -138,10 +138,10 @@ var _ = Describe("FlowSet Controller", func() {
 			Spec: genkitv1alpha1.FlowSetSpec{
 				Image: "ghcr.io/example/runner:1",
 				Flows: []genkitv1alpha1.FlowSetFlow{
-					{Name: "alpha", ModelRef: corev1.LocalObjectReference{Name: m.Name},
-						Prompts: []corev1.LocalObjectReference{{Name: pa.Name}}},
-					{Name: "beta", ModelRef: corev1.LocalObjectReference{Name: m.Name},
-						Prompts: []corev1.LocalObjectReference{{Name: pb.Name}}},
+					{Name: "alpha", ModelRef: &corev1.LocalObjectReference{Name: m.Name},
+						Prompts: []genkitv1alpha1.PromptSource{{PromptRef: &corev1.LocalObjectReference{Name: pa.Name}}}},
+					{Name: "beta", ModelRef: &corev1.LocalObjectReference{Name: m.Name},
+						Prompts: []genkitv1alpha1.PromptSource{{PromptRef: &corev1.LocalObjectReference{Name: pb.Name}}}},
 				},
 			},
 		}

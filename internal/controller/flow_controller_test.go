@@ -85,7 +85,7 @@ var _ = Describe("Flow Controller", func() {
 			Spec: genkitv1alpha1.FlowSpec{
 				Image:    "ghcr.io/example/flow:1",
 				ModelRef: &corev1.LocalObjectReference{Name: m.Name},
-				Prompts:  []corev1.LocalObjectReference{{Name: p.Name}},
+				Prompts:  []genkitv1alpha1.PromptSource{{PromptRef: &corev1.LocalObjectReference{Name: p.Name}}},
 			},
 		}
 		Expect(k8sClient.Create(ctx, flow)).To(Succeed())
@@ -111,7 +111,7 @@ var _ = Describe("Flow Controller", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
 			Spec: genkitv1alpha1.FlowSpec{
 				Image:   "ghcr.io/example/flow:1",
-				Prompts: []corev1.LocalObjectReference{{Name: "nope"}},
+				Prompts: []genkitv1alpha1.PromptSource{{PromptRef: &corev1.LocalObjectReference{Name: "nope"}}},
 			},
 		}
 		Expect(k8sClient.Create(ctx, flow)).To(Succeed())
@@ -134,7 +134,7 @@ var _ = Describe("Flow Controller", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
 			Spec: genkitv1alpha1.FlowSpec{
 				Image:   "ghcr.io/example/flow:1",
-				Prompts: []corev1.LocalObjectReference{{Name: p.Name}},
+				Prompts: []genkitv1alpha1.PromptSource{{PromptRef: &corev1.LocalObjectReference{Name: p.Name}}},
 			},
 		}
 		Expect(k8sClient.Create(ctx, flow)).To(Succeed())
@@ -172,7 +172,7 @@ var _ = Describe("Flow Controller", func() {
 			Spec: genkitv1alpha1.FlowSpec{
 				Image:    "ghcr.io/example/flow:1",
 				ModelRef: &corev1.LocalObjectReference{Name: m.Name},
-				Prompts:  []corev1.LocalObjectReference{{Name: p.Name}},
+				Prompts:  []genkitv1alpha1.PromptSource{{PromptRef: &corev1.LocalObjectReference{Name: p.Name}}},
 			},
 		}
 		Expect(k8sClient.Create(ctx, flow)).To(Succeed())

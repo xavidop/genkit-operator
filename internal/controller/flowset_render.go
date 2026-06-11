@@ -163,7 +163,7 @@ func renderFlowSet(fs *genkitv1alpha1.FlowSet, deps *resolvedFlowSet) (*rendered
 		// Manifest entry.
 		entrypoint := ""
 		if len(rf.template.Prompts) > 0 {
-			entrypoint = rf.template.Prompts[0].Name
+			entrypoint = rf.template.Prompts[0].GetName()
 		}
 		manifest.Flows = append(manifest.Flows, flowManifestEntry{
 			Name:       rf.template.Name,
