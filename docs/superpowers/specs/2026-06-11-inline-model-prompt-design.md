@@ -11,6 +11,10 @@ Users who want to build a Flow or FlowSet without creating separate `Model` and 
 
 Add inline alternatives for model spec and prompts directly in `Flow` and `FlowSet`, while keeping all existing ref-based fields fully intact and unchanged.
 
+## Migration Note
+
+The `prompts` field element type changes from `corev1.LocalObjectReference` (bare `name`) to `PromptSource`. Existing YAML using `- name: greeting` must be updated to `- promptRef: {name: greeting}`. Since this is v1alpha1, this breaking change is acceptable.
+
 ## Out of Scope
 
 - Inlining `PluginConfig` credentials — a `PluginConfig` CR is still required for credentials even when using an inline model spec.
