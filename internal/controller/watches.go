@@ -299,15 +299,21 @@ func flowsReferencingPluginConfig(ctx context.Context, c client.Client, namespac
 	}
 	var out []reconcile.Request
 	for _, f := range flows.Items {
-		if f.Spec.ModelRef == nil {
-			continue
+		// Check via modelRef → Model → PluginConfig chain.
+		if f.Spec.ModelRef != nil {
+			if _, ok := modelNames[f.Spec.ModelRef.Name]; ok {
+				out = append(out, reconcile.Request{
+					NamespacedName: types.NamespacedName{Namespace: f.Namespace, Name: f.Name},
+				})
+				continue
+			}
 		}
-		if _, ok := modelNames[f.Spec.ModelRef.Name]; !ok {
-			continue
+		// Check via inline modelSpec.pluginConfigRef directly referencing the PluginConfig.
+		if f.Spec.ModelSpec != nil && f.Spec.ModelSpec.PluginConfigRef.Name == pcName {
+			out = append(out, reconcile.Request{
+				NamespacedName: types.NamespacedName{Namespace: f.Namespace, Name: f.Name},
+			})
 		}
-		out = append(out, reconcile.Request{
-			NamespacedName: types.NamespacedName{Namespace: f.Namespace, Name: f.Name},
-		})
 	}
 	return out
 }
